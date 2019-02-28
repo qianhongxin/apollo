@@ -1,3 +1,86 @@
+https://github.com/qianhongxin/apollo
+
 1. 仅仅做配置中心，架构上没有违背单一职责原则
 
 2. 用cat做了调用链监控
+
+3. apollo设计时，是分布式的，我们需要配置数据可用性高，所以对配置数据的cap就有了要求，属于cp系统。
+配置中心作为基础服务，可用性要求非常高，这就要求 Apollo 对外部依赖尽可能地少。目前唯一的外部依赖是 MySQL，所以部署非常简单，只要安装好 Java 和 MySQL 就可以让 Apollo 跑起来
+
+4. 同一个环境可以配置多个集群配置，切换集群进行本地开发即可
+
+5. cluster (集群)
+
+   一个应用下不同实例的分组，比如典型的可以按照数据中心分，把上海机房的应用实例分为一个集群，把北京机房的应用实例分为另一个集群。对不同的 cluster，同一个配置可以有不一样的值，如 ZooKeeper 地址。
+
+   集群默认是通过读取机器上的配置（server.properties 中的 idc 属性）指定的，不过也支持运行时通过 System Property 指定。
+
+6. namespace (命名空间)
+   一个应用下不同配置的分组，可以简单地把 namespace 类比为文件，不同类型的配置存放在不同的文件中，如数据库配置文件，RPC 配置文件，应用自身的配置文件等。
+
+   应用可以直接读取到公共组件的配置 namespace，如 DAL，RPC 等。应用也可以通过继承公共组件的配置 namespace 来对公共组件的配置做调整，如 DAL 的初始数据库连接数。
+
+7. MetaServer：
+在 Eureka 之上我们架了一层 Meta Server 用于封装 Eureka 的服务发现接口
+
+Client 通过域名访问 Meta Server 获取 Config Service 服务列表（IP+Port），而后直接通过 IP+Port 访问服务，同时在 Client 侧会做 load balance、错误重试
+
+Portal 通过域名访问 Meta Server 获取 Admin Service 服务列表（IP+Port），而后直接通过 IP+Port 访问服务，同时在 Portal 侧会做 load balance、错误重试
+
+解析：通过访问dns获取任意一个metaserver，获得ip和port
+
+8. 上图简要描述了 Apollo 客户端的实现原理：
+
+   1、客户端和服务端保持了一个长连接，从而能第一时间获得配置更新的推送。
+
+   2、客户端还会定时从 Apollo 配置中心服务端拉取应用的最新配置。
+
+   这是一个 fallback 机制，为了防止推送机制失效导致配置不更新。
+
+   客户端定时拉取会上报本地版本，所以一般情况下，对于定时拉取的操作，服务端都会返回 304 - Not Modified。
+
+   定时频率默认为每 5 分钟拉取一次，客户端也可以通过在运行时指定 System Property: apollo.refreshInterval 来覆盖，单位为分钟。
+
+   3、客户端从 Apollo 配置中心服务端获取到应用的最新配置后，会保存在内存中
+
+   4、客户端会把从服务端获取到的配置在本地文件系统缓存一份
+
+   在遇到服务不可用，或网络不通的时候，依然能从本地恢复配置
+
+   5、应用程序从 Apollo 客户端获取最新的配置、订阅配置更新通知
+
+9. 配置更新推送实现
+   前面提到了 Apollo 客户端和服务端保持了一个长连接，从而能第一时间获得配置更新的推送。
+
+   长连接实际上我们是通过 Http Long Polling 实现的，具体而言：
+
+   1、客户端发起一个 Http 请求到服务端
+
+   2、服务端会保持住这个连接 30 秒
+
+   如果在 30 秒内有客户端关心的配置变化，被保持住的客户端请求会立即返回，并告知客户端有配置变化的 namespace 信息，客户端会据此拉取对应 namespace 的最新配置
+
+   如果在 30 秒内没有客户端关心的配置变化，那么会返回 Http 状态码 304 给客户端
+
+   3、客户端在收到服务端请求后会立即重新发起连接，回到第一步考虑到会有数万客户端向服务端发起长连，在服务端我们使用了 async servlet(Spring DeferredResult) 来服务 Http Long Polling 请求。
+
+10. Meta Server
+    Portal通过域名访问Meta Server获取Admin Service服务列表（IP+Port）
+    Client通过域名访问Meta Server获取Config Service服务列表（IP+Port）
+    Meta Server从Eureka获取Config Service和Admin Service的服务信息，相当于是一个Eureka Client
+    增设一个Meta Server的角色主要是为了封装服务发现的细节，对Portal和Client而言，永远通过一个Http接口获取Admin Service和Config Service的服务信息，而不需要关心背后实际的服务注册和发现组件
+    Meta Server只是一个逻辑角色，在部署时和Config Service是在一个JVM进程中的，所以IP、端口和Config Service一致
+
+    波波解释：在携程，应用场景不仅有Java，还有很多遗留的.Net应用。Apollo的作者也考虑到开源到社区以后，很多客户应用是非Java的。
+    但是Eureka(包括Ribbon软负载)原生仅支持Java客户端，如果要为多语言开发Eureka/Ribbon客户端，这个工作量很大也不可控。为此，
+    Apollo的作者引入了MetaServer这个角色，它其实是一个Eureka的Proxy，将Eureka的服务发现接口以更简单明确的HTTP接口的形式暴露出来，
+    方便Client/Protal通过简单的HTTPClient就可以查询到Config/AdminService的地址列表。获取到服务实例地址列表之后，再以简单的
+    客户端软负载(Client SLB)策略路由定位到目标实例，并发起调用。
+
+     现在还有一个问题，MetaServer本身也是无状态以集群方式部署的，
+     那么Client/Protal该如何发现MetaServer呢？一种传统的做法是借助硬件或者软件负载均衡器，
+     例如在携程采用的是扩展后的NginxLB（也称Software Load Balancer），由运维为MetaServer集群配置一个域名，
+     指向NginxLB集群，NginxLB再对MetaServer进行负载均衡和流量转发。Client/Portal通过域名+NginxLB间接访问MetaServer集群。
+
+
+11. DeferredResult
