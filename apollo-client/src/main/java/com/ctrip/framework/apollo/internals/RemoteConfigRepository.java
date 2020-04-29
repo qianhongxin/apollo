@@ -57,15 +57,18 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   private final RemoteConfigLongPollService remoteConfigLongPollService;
   private volatile AtomicReference<ApolloConfig> m_configCache;
   private final String m_namespace;
+    // 定时执行抓取远程配置的线程池
   private final static ScheduledExecutorService m_executorService;
   private final AtomicReference<ServiceDTO> m_longPollServiceDto;
   private final AtomicReference<ApolloNotificationMessages> m_remoteMessages;
+    // 访问获取远程配置的接口调用进行限流
   private final RateLimiter m_loadConfigRateLimiter;
   private final AtomicBoolean m_configNeedForceRefresh;
   private final SchedulePolicy m_loadConfigFailSchedulePolicy;
   private final Gson gson;
 
   static {
+      // 定时执行抓取远程配置的线程池
     m_executorService = Executors.newScheduledThreadPool(1,
         ApolloThreadFactory.create("RemoteConfigRepository", true));
   }
@@ -129,6 +132,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   }
 
   @Override
+  // 同步配置
   protected synchronized void sync() {
     Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "syncRemoteConfig");
 

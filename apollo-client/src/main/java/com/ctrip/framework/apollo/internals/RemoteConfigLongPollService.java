@@ -75,6 +75,7 @@ public class RemoteConfigLongPollService {
   public RemoteConfigLongPollService() {
     m_longPollFailSchedulePolicyInSecond = new ExponentialSchedulePolicy(1, 120); //in second
     m_longPollingStopped = new AtomicBoolean(false);
+    // 第一次拉取配置线程池，一次只让一个线程拉取
     m_longPollingService = Executors.newSingleThreadExecutor(
         ApolloThreadFactory.create("RemoteConfigLongPollService", true));
     m_longPollStarted = new AtomicBoolean(false);
@@ -88,6 +89,7 @@ public class RemoteConfigLongPollService {
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     m_httpUtil = ApolloInjector.getInstance(HttpUtil.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
+    // 限流，默认是2
     m_longPollRateLimiter = RateLimiter.create(m_configUtil.getLongPollQPS());
   }
 
@@ -110,6 +112,7 @@ public class RemoteConfigLongPollService {
       final String cluster = m_configUtil.getCluster();
       final String dataCenter = m_configUtil.getDataCenter();
       final long longPollingInitialDelayInMills = m_configUtil.getLongPollingInitialDelayInMills();
+      //
       m_longPollingService.submit(new Runnable() {
         @Override
         public void run() {
@@ -161,7 +164,9 @@ public class RemoteConfigLongPollService {
                 m_notifications);
 
         logger.debug("Long polling from {}", url);
+        // 请求服务端获取数据
         HttpRequest request = new HttpRequest(url);
+        // 超时时间90s
         request.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
 
         transaction.addData("Url", url);
