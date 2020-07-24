@@ -18,6 +18,8 @@ apollo-configservice-1.0.0-github.zip <br/>
 获取 apollo-configservice-1.0.0.jar, 重命名为 apollo-configservice.jar, 放到 scripts/apollo-on-kubernetes/apollo-config-server
 
 ### 1.3 build image
+需要分别为alpine-bash-3.8-image，apollo-config-server，apollo-admin-server和apollo-portal-server构建镜像。
+
 以 build apollo-config-server image 为例, 其他类似
 
 ```bash
@@ -47,7 +49,7 @@ push image <br/>
 ## 二、Deploy apollo on kubernetes
 
 ### 2.1 部署 MySQL 服务
-你可以选用 MySQL-Galera-WSrep 或 TiDB 来提高你的 MySQL 服务的可用性 <br/>
+你可以选用 MySQL-Galera-WSrep 来提高你的 MySQL 服务的可用性 <br/>
 MySQL 部署步骤略
 
 ### 2.1 导入 MySQL DB 文件
@@ -61,7 +63,7 @@ MySQL 部署步骤略
 
 示例假设你有 4 台 kubernetes node 来部署 apollo, apollo 开启了 4 个环境, 即 dev、test-alpha、test-beta、prod
 
-按照 scripts/apollo-on-kubernetes/kubernetes/kubectl-apply.sh 文件的内容部署 apollo 即可
+按照 scripts/apollo-on-kubernetes/kubernetes/kubectl-apply.sh 文件的内容部署 apollo 即可，注意需要按照实际情况修改对应配置文件中的数据库连接信息、eureka.service.url、replicas、nodeSelector、镜像信息等。
 
 ```bash
 scripts/apollo-on-kubernetes/kubernetes$ cat kubectl-apply.sh
@@ -69,30 +71,31 @@ scripts/apollo-on-kubernetes/kubernetes$ cat kubectl-apply.sh
 kubectl create namespace sre
 
 # dev-env
-kubectl apply -f service-mysql-for-apollo-dev-env.yaml --record && \
-kubectl apply -f service-apollo-config-server-dev.yaml --record && \
-kubectl apply -f service-apollo-admin-server-dev.yaml --record
+kubectl apply -f apollo-env-dev/service-mysql-for-apollo-dev-env.yaml --record && \
+kubectl apply -f apollo-env-dev/service-apollo-config-server-dev.yaml --record && \
+kubectl apply -f apollo-env-dev/service-apollo-admin-server-dev.yaml --record
 
 # fat-env(test-alpha-env)
-kubectl apply -f service-mysql-for-apollo-test-alpha-env.yaml --record && \
-kubectl apply -f service-apollo-config-server-test-alpha.yaml --record && \
-kubectl apply -f service-apollo-admin-server-test-alpha.yaml --record
+kubectl apply -f apollo-env-test-alpha/service-mysql-for-apollo-test-alpha-env.yaml --record && \
+kubectl apply -f apollo-env-test-alpha/service-apollo-config-server-test-alpha.yaml --record && \
+kubectl apply -f apollo-env-test-alpha/service-apollo-admin-server-test-alpha.yaml --record
 
 # uat-env(test-beta-env)
-kubectl apply -f service-mysql-for-apollo-test-beta-env.yaml --record && \
-kubectl apply -f service-apollo-config-server-test-beta.yaml --record && \
-kubectl apply -f service-apollo-admin-server-test-beta.yaml --record
+kubectl apply -f apollo-env-test-beta/service-mysql-for-apollo-test-beta-env.yaml --record && \
+kubectl apply -f apollo-env-test-beta/service-apollo-config-server-test-beta.yaml --record && \
+kubectl apply -f apollo-env-test-beta/service-apollo-admin-server-test-beta.yaml --record
 
 # prod-env
-kubectl apply -f service-mysql-for-apollo-prod-env.yaml --record && \
-kubectl apply -f service-apollo-config-server-prod.yaml --record && \
-kubectl apply -f service-apollo-admin-server-prod.yaml --record
+kubectl apply -f apollo-env-prod/service-mysql-for-apollo-prod-env.yaml --record && \
+kubectl apply -f apollo-env-prod/service-apollo-config-server-prod.yaml --record && \
+kubectl apply -f apollo-env-prod/service-apollo-admin-server-prod.yaml --record
 
 # portal
 kubectl apply -f service-apollo-portal-server.yaml --record
 ```
 
-你需要注意的是, 应当尽量让同一个 server 的不同 pod 在不同 node 上, 这个通过 kubernetes nodeSelector 实现
+~~你需要注意的是, 应当尽量让同一个 server 的不同 pod 在不同 node 上, 这个通过 kubernetes nodeSelector 实现~~
+去掉nodeSelector 改为POD反亲和性[podAntiAffinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/)
 
 ### 2.3 验证所有 pod 处于 Running 并且 READY 状态
 
