@@ -42,6 +42,7 @@ public class ReleaseMessageScanner implements InitializingBean {
   @Override
   public void afterPropertiesSet() throws Exception {
     databaseScanInterval = bizConfig.releaseMessageScanIntervalInMilli();
+    // 初始化maxIdScanned
     maxIdScanned = loadLargestMessageId();
     executorService.scheduleWithFixedDelay((Runnable) () -> {
       Transaction transaction = Tracer.newTransaction("Apollo.ReleaseMessageScanner", "scanMessage");
@@ -85,11 +86,13 @@ public class ReleaseMessageScanner implements InitializingBean {
    */
   private boolean scanAndSendMessages() {
     //current batch is 500
+    // 每次批量处理500条数据，从上次记录的maxIdScanned开始。maxIdScanned在系统启动时初始化好即46行
     List<ReleaseMessage> releaseMessages =
         releaseMessageRepository.findFirst500ByIdGreaterThanOrderByIdAsc(maxIdScanned);
     if (CollectionUtils.isEmpty(releaseMessages)) {
       return false;
     }
+    // 通知客户端
     fireMessageScanned(releaseMessages);
     int messageScanned = releaseMessages.size();
     maxIdScanned = releaseMessages.get(messageScanned - 1).getId();
@@ -113,6 +116,7 @@ public class ReleaseMessageScanner implements InitializingBean {
     for (ReleaseMessage message : messages) {
       for (ReleaseMessageListener listener : listeners) {
         try {
+            // 通知所有的订阅者，比如通知客户端，观察者模式
           listener.handleMessage(message, Topics.APOLLO_RELEASE_TOPIC);
         } catch (Throwable ex) {
           Tracer.logError(ex);
