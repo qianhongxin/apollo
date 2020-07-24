@@ -6,6 +6,7 @@ import com.ctrip.framework.apollo.core.ConfigConsts;
 import com.ctrip.framework.apollo.spring.config.ConfigPropertySourceFactory;
 import com.ctrip.framework.apollo.spring.config.PropertySourcesConstants;
 import com.ctrip.framework.apollo.spring.util.SpringInjector;
+import com.ctrip.framework.apollo.util.factory.PropertiesFactory;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.CompositePropertySource;
 import org.springframework.core.env.ConfigurableEnvironment;
 
@@ -54,21 +56,24 @@ import org.springframework.core.env.ConfigurableEnvironment;
  *
  */
 public class ApolloApplicationContextInitializer implements
-    ApplicationContextInitializer<ConfigurableApplicationContext> , EnvironmentPostProcessor {
+    ApplicationContextInitializer<ConfigurableApplicationContext> , EnvironmentPostProcessor, Ordered {
+  public static final int DEFAULT_ORDER = 0;
+
   private static final Logger logger = LoggerFactory.getLogger(ApolloApplicationContextInitializer.class);
   private static final Splitter NAMESPACE_SPLITTER = Splitter.on(",").omitEmptyStrings().trimResults();
   private static final String[] APOLLO_SYSTEM_PROPERTIES = {"app.id", ConfigConsts.APOLLO_CLUSTER_KEY,
-      "apollo.cacheDir", ConfigConsts.APOLLO_META_KEY};
+      "apollo.cacheDir", "apollo.accesskey.secret", ConfigConsts.APOLLO_META_KEY, PropertiesFactory.APOLLO_PROPERTY_ORDER_ENABLE};
 
   private final ConfigPropertySourceFactory configPropertySourceFactory = SpringInjector
       .getInstance(ConfigPropertySourceFactory.class);
+
+  private int order = DEFAULT_ORDER;
 
   @Override
   public void initialize(ConfigurableApplicationContext context) {
     ConfigurableEnvironment environment = context.getEnvironment();
 
-    String enabled = environment.getProperty(PropertySourcesConstants.APOLLO_BOOTSTRAP_ENABLED, "false");
-    if (!Boolean.valueOf(enabled)) {
+    if (!environment.getProperty(PropertySourcesConstants.APOLLO_BOOTSTRAP_ENABLED, Boolean.class, false)) {
       logger.debug("Apollo bootstrap config is not enabled for context {}, see property: ${{}}", context, PropertySourcesConstants.APOLLO_BOOTSTRAP_ENABLED);
       return;
     }
@@ -158,5 +163,20 @@ public class ApolloApplicationContextInitializer implements
       initialize(configurableEnvironment);
     }
 
+  }
+
+  /**
+   * @since 1.3.0
+   */
+  @Override
+  public int getOrder() {
+    return order;
+  }
+
+  /**
+   * @since 1.3.0
+   */
+  public void setOrder(int order) {
+    this.order = order;
   }
 }

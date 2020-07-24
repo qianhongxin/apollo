@@ -1,6 +1,7 @@
 package com.ctrip.framework.apollo.portal.spi.configuration;
 
 import com.ctrip.framework.apollo.common.condition.ConditionalOnMissingProfile;
+import com.ctrip.framework.apollo.core.utils.StringUtils;
 import com.ctrip.framework.apollo.portal.component.config.PortalConfig;
 import com.ctrip.framework.apollo.portal.spi.LogoutHandler;
 import com.ctrip.framework.apollo.portal.spi.SsoHeartbeatHandler;
@@ -14,16 +15,12 @@ import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultLogoutHandler;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultSsoHeartbeatHandler;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultUserInfoHolder;
 import com.ctrip.framework.apollo.portal.spi.defaultimpl.DefaultUserService;
+import com.ctrip.framework.apollo.portal.spi.ldap.ApolloLdapAuthenticationProvider;
+import com.ctrip.framework.apollo.portal.spi.ldap.FilterLdapByGroupUserSearch;
 import com.ctrip.framework.apollo.portal.spi.ldap.LdapUserService;
 import com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserInfoHolder;
 import com.ctrip.framework.apollo.portal.spi.springsecurity.SpringSecurityUserService;
 import com.google.common.collect.Maps;
-import java.util.Collections;
-import java.util.EventListener;
-import java.util.Map;
-import javax.servlet.Filter;
-import javax.sql.DataSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -51,8 +48,18 @@ import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 
+import javax.servlet.Filter;
+import javax.sql.DataSource;
+import java.util.Collections;
+import java.util.EventListener;
+import java.util.Map;
+
 @Configuration
 public class AuthConfiguration {
+
+  private static final String[] BY_PASS_URLS = {"/prometheus/**", "/metrics/**", "/openapi/**",
+      "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**", "/i18n/**", "/prefix-path",
+      "/health"};
 
   /**
    * spring.profiles.active = ctrip
@@ -61,8 +68,11 @@ public class AuthConfiguration {
   @Profile("ctrip")
   static class CtripAuthAutoConfiguration {
 
-    @Autowired
-    private PortalConfig portalConfig;
+    private final PortalConfig portalConfig;
+
+    public CtripAuthAutoConfiguration(final PortalConfig portalConfig) {
+      this.portalConfig = portalConfig;
+    }
 
     @Bean
     public ServletListenerRegistrationBean redisAppSettingListner() {
@@ -231,14 +241,14 @@ public class AuthConfiguration {
       jdbcUserDetailsManager
           .setCreateUserSql("insert into `Users` (Username, Password, Enabled) values (?,?,?)");
       jdbcUserDetailsManager
-          .setUpdateUserSql("update `Users` set Password = ?, Enabled = ? where Username = ?");
-      jdbcUserDetailsManager.setDeleteUserSql("delete from `Users` where Username = ?");
+          .setUpdateUserSql("update `Users` set Password = ?, Enabled = ? where id = (select u.id from (select id from `Users` where Username = ?) as u)");
+      jdbcUserDetailsManager.setDeleteUserSql("delete from `Users` where id = (select u.id from (select id from `Users` where Username = ?) as u)");
       jdbcUserDetailsManager
           .setCreateAuthoritySql("insert into `Authorities` (Username, Authority) values (?,?)");
       jdbcUserDetailsManager
-          .setDeleteUserAuthoritiesSql("delete from `Authorities` where Username = ?");
+          .setDeleteUserAuthoritiesSql("delete from `Authorities` where id in (select a.id from (select id from `Authorities` where Username = ?) as a)");
       jdbcUserDetailsManager
-          .setChangePasswordSql("update `Users` set Password = ? where Username = ?");
+          .setChangePasswordSql("update `Users` set Password = ? where id = (select u.id from (select id from `Users` where Username = ?) as u)");
 
       return jdbcUserDetailsManager;
     }
@@ -265,13 +275,12 @@ public class AuthConfiguration {
       http.csrf().disable();
       http.headers().frameOptions().sameOrigin();
       http.authorizeRequests()
-          .antMatchers("/openapi/**", "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**").permitAll()
+          .antMatchers(BY_PASS_URLS).permitAll()
           .antMatchers("/**").hasAnyRole(USER_ROLE);
-      http.formLogin().loginPage("/signin").permitAll().failureUrl("/signin?#/error").and().httpBasic();
-      SimpleUrlLogoutSuccessHandler urlLogoutHandler = new SimpleUrlLogoutSuccessHandler();
-      urlLogoutHandler.setDefaultTargetUrl("/signin?#/logout");
+      http.formLogin().loginPage("/signin").defaultSuccessUrl("/", true).permitAll().failureUrl("/signin?#/error").and()
+          .httpBasic();
       http.logout().logoutUrl("/user/logout").invalidateHttpSession(true).clearAuthentication(true)
-          .logoutSuccessHandler(urlLogoutHandler);
+          .logoutSuccessUrl("/signin?#/logout");
       http.exceptionHandling().authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/signin"));
     }
 
@@ -282,14 +291,16 @@ public class AuthConfiguration {
    */
   @Configuration
   @Profile("ldap")
-  @EnableConfigurationProperties(LdapProperties.class)
+  @EnableConfigurationProperties({LdapProperties.class,LdapExtendProperties.class})
   static class SpringSecurityLDAPAuthAutoConfiguration {
 
-    @Autowired
-    private LdapProperties properties;
+    private final LdapProperties properties;
+    private final Environment environment;
 
-    @Autowired
-    private Environment environment;
+    public SpringSecurityLDAPAuthAutoConfiguration(final LdapProperties properties, final Environment environment) {
+      this.properties = properties;
+      this.environment = environment;
+    }
 
     @Bean
     @ConditionalOnMissingBean(SsoHeartbeatHandler.class)
@@ -345,17 +356,36 @@ public class AuthConfiguration {
   @EnableGlobalMethodSecurity(prePostEnabled = true)
   static class SpringSecurityLDAPConfigurer extends WebSecurityConfigurerAdapter {
 
-    @Autowired
-    private LdapProperties ldapProperties;
-    @Autowired
-    private LdapContextSource ldapContextSource;
+    private final LdapProperties ldapProperties;
+    private final LdapContextSource ldapContextSource;
+
+    private final LdapExtendProperties ldapExtendProperties;
+
+    public SpringSecurityLDAPConfigurer(final LdapProperties ldapProperties,
+        final LdapContextSource ldapContextSource,
+       final LdapExtendProperties ldapExtendProperties) {
+      this.ldapProperties = ldapProperties;
+      this.ldapContextSource = ldapContextSource;
+      this.ldapExtendProperties = ldapExtendProperties;
+    }
 
     @Bean
     public FilterBasedLdapUserSearch userSearch() {
-      FilterBasedLdapUserSearch filterBasedLdapUserSearch = new FilterBasedLdapUserSearch("",
-          ldapProperties.getSearchFilter(), ldapContextSource);
-      filterBasedLdapUserSearch.setSearchSubtree(true);
-      return filterBasedLdapUserSearch;
+      if (ldapExtendProperties.getGroup() == null || StringUtils
+          .isBlank(ldapExtendProperties.getGroup().getGroupSearch())) {
+        FilterBasedLdapUserSearch filterBasedLdapUserSearch = new FilterBasedLdapUserSearch("",
+            ldapProperties.getSearchFilter(), ldapContextSource);
+        filterBasedLdapUserSearch.setSearchSubtree(true);
+        return filterBasedLdapUserSearch;
+      }
+
+      FilterLdapByGroupUserSearch filterLdapByGroupUserSearch = new FilterLdapByGroupUserSearch(
+          ldapProperties.getBase(), ldapProperties.getSearchFilter(), ldapExtendProperties.getGroup().getGroupBase(),
+          ldapContextSource, ldapExtendProperties.getGroup().getGroupSearch(),
+          ldapExtendProperties.getMapping().getRdnKey(),
+          ldapExtendProperties.getGroup().getGroupMembership(),ldapExtendProperties.getMapping().getLoginId());
+      filterLdapByGroupUserSearch.setSearchSubtree(true);
+      return filterLdapByGroupUserSearch;
     }
 
     @Bean
@@ -366,9 +396,10 @@ public class AuthConfiguration {
           ldapContextSource, null);
       defaultAuthAutoConfiguration.setIgnorePartialResultException(true);
       defaultAuthAutoConfiguration.setSearchSubtree(true);
-      LdapAuthenticationProvider ldapAuthenticationProvider = new LdapAuthenticationProvider(
-          bindAuthenticator, defaultAuthAutoConfiguration);
-      return ldapAuthenticationProvider;
+      // Rewrite the logic of LdapAuthenticationProvider with ApolloLdapAuthenticationProvider,
+      // use userId in LDAP system instead of userId input by user.
+      return new ApolloLdapAuthenticationProvider(
+          bindAuthenticator, defaultAuthAutoConfiguration, ldapExtendProperties);
     }
 
     @Override
@@ -376,13 +407,12 @@ public class AuthConfiguration {
       http.csrf().disable();
       http.headers().frameOptions().sameOrigin();
       http.authorizeRequests()
-          .antMatchers("/openapi/**", "/vendor/**", "/styles/**", "/scripts/**", "/views/**", "/img/**").permitAll()
+          .antMatchers(BY_PASS_URLS).permitAll()
           .antMatchers("/**").authenticated();
-      http.formLogin().loginPage("/signin").permitAll().failureUrl("/signin?#/error").and().httpBasic();
-      SimpleUrlLogoutSuccessHandler urlLogoutHandler = new SimpleUrlLogoutSuccessHandler();
-      urlLogoutHandler.setDefaultTargetUrl("/signin?#/logout");
+      http.formLogin().loginPage("/signin").defaultSuccessUrl("/", true).permitAll().failureUrl("/signin?#/error").and()
+              .httpBasic();
       http.logout().logoutUrl("/user/logout").invalidateHttpSession(true).clearAuthentication(true)
-          .logoutSuccessHandler(urlLogoutHandler);
+              .logoutSuccessUrl("/signin?#/logout");
       http.exceptionHandling().authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/signin"));
     }
 

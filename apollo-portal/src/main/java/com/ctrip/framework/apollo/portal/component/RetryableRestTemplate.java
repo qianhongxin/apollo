@@ -1,18 +1,17 @@
 package com.ctrip.framework.apollo.portal.component;
 
 import com.ctrip.framework.apollo.common.exception.ServiceException;
-import com.ctrip.framework.apollo.core.MetaDomainConsts;
+import com.ctrip.framework.apollo.portal.environment.PortalMetaDomainService;
 import com.ctrip.framework.apollo.core.dto.ServiceDTO;
-import com.ctrip.framework.apollo.core.enums.Env;
+import com.ctrip.framework.apollo.portal.environment.Env;
 import com.ctrip.framework.apollo.portal.constant.TracerEventType;
 import com.ctrip.framework.apollo.tracer.Tracer;
 import com.ctrip.framework.apollo.tracer.spi.Transaction;
-
 import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.HttpHostConnectException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +22,9 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 import org.springframework.web.util.UriTemplateHandler;
 
+import javax.annotation.PostConstruct;
 import java.net.SocketTimeoutException;
 import java.util.List;
-
-import javax.annotation.PostConstruct;
 
 /**
  * 封装RestTemplate. admin server集群在某些机器宕机或者超时的情况下轮询重试
@@ -40,10 +38,19 @@ public class RetryableRestTemplate {
 
   private RestTemplate restTemplate;
 
-  @Autowired
-  private RestTemplateFactory restTemplateFactory;
-  @Autowired
-  private AdminServiceAddressLocator adminServiceAddressLocator;
+  private final RestTemplateFactory restTemplateFactory;
+  private final AdminServiceAddressLocator adminServiceAddressLocator;
+  private final PortalMetaDomainService portalMetaDomainService;
+
+  public RetryableRestTemplate(
+      final @Lazy RestTemplateFactory restTemplateFactory,
+      final @Lazy AdminServiceAddressLocator adminServiceAddressLocator,
+      final PortalMetaDomainService portalMetaDomainService
+  ) {
+    this.restTemplateFactory = restTemplateFactory;
+    this.adminServiceAddressLocator = adminServiceAddressLocator;
+    this.portalMetaDomainService = portalMetaDomainService;
+  }
 
 
   @PostConstruct
@@ -113,7 +120,7 @@ public class RetryableRestTemplate {
     //all admin server down
     ServiceException e =
         new ServiceException(String.format("Admin servers are unresponsive. meta server address: %s, admin servers: %s",
-                                           MetaDomainConsts.getDomain(env), services));
+                portalMetaDomainService.getDomain(env), services));
     ct.setStatus(e);
     ct.complete();
     throw e;
@@ -157,7 +164,7 @@ public class RetryableRestTemplate {
     //all admin server down
     ServiceException e =
         new ServiceException(String.format("Admin servers are unresponsive. meta server address: %s, admin servers: %s",
-                                           MetaDomainConsts.getDomain(env), services));
+                portalMetaDomainService.getDomain(env), services));
     ct.setStatus(e);
     ct.complete();
     throw e;
@@ -172,7 +179,7 @@ public class RetryableRestTemplate {
       ServiceException e = new ServiceException(String.format("No available admin server."
                                                               + " Maybe because of meta server down or all admin server down. "
                                                               + "Meta server address: %s",
-                                                              MetaDomainConsts.getDomain(env)));
+              portalMetaDomainService.getDomain(env)));
       ct.setStatus(e);
       ct.complete();
       throw e;
@@ -216,10 +223,9 @@ public class RetryableRestTemplate {
       return nestedException instanceof SocketTimeoutException
              || nestedException instanceof HttpHostConnectException
              || nestedException instanceof ConnectTimeoutException;
-    } else {
-      return nestedException instanceof HttpHostConnectException
-             || nestedException instanceof ConnectTimeoutException;
     }
+    return nestedException instanceof HttpHostConnectException
+           || nestedException instanceof ConnectTimeoutException;
   }
 
 }

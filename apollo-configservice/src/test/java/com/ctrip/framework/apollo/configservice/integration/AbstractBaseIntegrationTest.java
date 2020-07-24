@@ -1,5 +1,6 @@
 package com.ctrip.framework.apollo.configservice.integration;
 
+import com.ctrip.framework.apollo.biz.service.BizDBPropertySource;
 import com.google.gson.Gson;
 
 import com.ctrip.framework.apollo.ConfigServiceTestConfiguration;
@@ -63,8 +64,8 @@ public abstract class AbstractBaseIntegrationTest {
   @Import(ConfigServiceTestConfiguration.class)
   protected static class TestConfiguration {
     @Bean
-    public BizConfig bizConfig() {
-      return new TestBizConfig();
+    public BizConfig bizConfig(final BizDBPropertySource bizDBPropertySource) {
+      return new TestBizConfig(bizDBPropertySource);
     }
   }
 
@@ -92,7 +93,7 @@ public abstract class AbstractBaseIntegrationTest {
   }
 
   protected void periodicSendMessage(ExecutorService executorService, String message, AtomicBoolean stop) {
-    executorService.submit((Runnable) () -> {
+    executorService.submit(() -> {
       //wait for the request connected to server
       while (!stop.get() && !Thread.currentThread().isInterrupted()) {
         try {
@@ -111,6 +112,10 @@ public abstract class AbstractBaseIntegrationTest {
   }
 
   private static class TestBizConfig extends BizConfig {
+    public TestBizConfig(final BizDBPropertySource propertySource) {
+      super(propertySource);
+    }
+
     @Override
     public int appNamespaceCacheScanInterval() {
       //should be short enough to update the AppNamespace cache in time

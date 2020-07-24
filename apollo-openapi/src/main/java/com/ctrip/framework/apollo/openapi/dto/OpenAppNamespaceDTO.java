@@ -1,7 +1,6 @@
 package com.ctrip.framework.apollo.openapi.dto;
 
 public class OpenAppNamespaceDTO extends BaseDTO {
-
     private String name;
 
     private String appId;
@@ -9,6 +8,9 @@ public class OpenAppNamespaceDTO extends BaseDTO {
     private String format;
 
     private boolean isPublic;
+
+    // whether to append namespace prefix for public namespace name
+    private boolean appendNamespacePrefix = true;
 
     private String comment;
 
@@ -44,11 +46,35 @@ public class OpenAppNamespaceDTO extends BaseDTO {
         isPublic = aPublic;
     }
 
+    public boolean isAppendNamespacePrefix() {
+        return appendNamespacePrefix;
+    }
+
+    public void setAppendNamespacePrefix(boolean appendNamespacePrefix) {
+        this.appendNamespacePrefix = appendNamespacePrefix;
+    }
+
     public String getComment() {
         return comment;
     }
 
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    @Override
+    public String toString() {
+        return "OpenAppNamespaceDTO{" +
+            "name='" + name + '\'' +
+            ", appId='" + appId + '\'' +
+            ", format='" + format + '\'' +
+            ", isPublic=" + isPublic +
+            ", appendNamespacePrefix=" + appendNamespacePrefix +
+            ", comment='" + comment + '\'' +
+            ", dataChangeCreatedBy='" + dataChangeCreatedBy + '\'' +
+            ", dataChangeLastModifiedBy='" + dataChangeLastModifiedBy + '\'' +
+            ", dataChangeCreatedTime=" + dataChangeCreatedTime +
+            ", dataChangeLastModifiedTime=" + dataChangeLastModifiedTime +
+            '}';
     }
 }
