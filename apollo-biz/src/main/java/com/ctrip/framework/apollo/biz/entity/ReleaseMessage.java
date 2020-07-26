@@ -17,12 +17,14 @@ import javax.persistence.Table;
  */
 @Entity
 @Table(name = "ReleaseMessage")
+// 变更记录
 public class ReleaseMessage {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "Id")
   private long id;
 
+  // message是appId+clusterName+namespace
   @Column(name = "Message", nullable = false)
   private String message;
 

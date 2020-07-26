@@ -17,6 +17,7 @@ import javax.persistence.Table;
 @Table(name = "Release")
 @SQLDelete(sql = "Update Release set isDeleted = 1 where id = ?")
 @Where(clause = "isDeleted = 0")
+// 当前版本配置
 public class Release extends BaseEntity {
   @Column(name = "ReleaseKey", nullable = false)
   private String releaseKey;

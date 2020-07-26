@@ -15,12 +15,15 @@ import javax.persistence.Table;
 @Where(clause = "isDeleted = 0")
 public class Namespace extends BaseEntity {
 
+  // 应用id
   @Column(name = "appId", nullable = false)
   private String appId;
 
+  // 集群名字，每个环境默认的集群名字是default
   @Column(name = "ClusterName", nullable = false)
   private String clusterName;
 
+  // 命名空间名字
   @Column(name = "NamespaceName", nullable = false)
   private String namespaceName;
 

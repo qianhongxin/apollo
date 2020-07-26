@@ -3,6 +3,7 @@ package com.ctrip.framework.apollo.common.dto;
 
 public class ItemDTO extends BaseDTO{
 
+
   private long id;
 
   private long namespaceId;

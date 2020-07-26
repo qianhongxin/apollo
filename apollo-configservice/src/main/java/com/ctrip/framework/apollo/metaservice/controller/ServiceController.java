@@ -28,6 +28,7 @@ public class ServiceController {
     return Collections.emptyList();
   }
 
+  // 返回 configService 的实例信息
   @RequestMapping("/config")
   public List<ServiceDTO> getConfigService(
       @RequestParam(value = "appId", defaultValue = "") String appId,
@@ -35,6 +36,7 @@ public class ServiceController {
     return discoveryService.getServiceInstances(ServiceNameConsts.APOLLO_CONFIGSERVICE);
   }
 
+  // 返回 adminService 的实例信息
   @RequestMapping("/admin")
   public List<ServiceDTO> getAdminService() {
     return discoveryService.getServiceInstances(ServiceNameConsts.APOLLO_ADMINSERVICE);

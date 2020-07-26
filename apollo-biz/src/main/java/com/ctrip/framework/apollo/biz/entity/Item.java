@@ -14,8 +14,10 @@ import javax.persistence.Table;
 @Table(name = "Item")
 @SQLDelete(sql = "Update Item set isDeleted = 1 where id = ?")
 @Where(clause = "isDeleted = 0")
+// 具体的配置信息，key-value对，namespaceId作为外键
 public class Item extends BaseEntity {
 
+  // Namespace的主键（参见Namespace实体）
   @Column(name = "NamespaceId", nullable = false)
   private long namespaceId;
 

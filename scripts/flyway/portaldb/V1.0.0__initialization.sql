@@ -47,7 +47,7 @@ CREATE TABLE `AppNamespace` (
   `Id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增主键',
   `Name` varchar(32) NOT NULL DEFAULT '' COMMENT 'namespace名字，注意，需要全局唯一',
   `AppId` varchar(32) NOT NULL DEFAULT '' COMMENT 'app id',
-  `Format` varchar(32) NOT NULL DEFAULT 'properties' COMMENT 'namespace的format类型',
+  `Format` varchar(32) NOT NULL DEFAULT 'properties' COMMENT 'namespace的format类型 properties，yml，yaml，json，txt等',
   `IsPublic` bit(1) NOT NULL DEFAULT b'0' COMMENT 'namespace是否为公共',
   `Comment` varchar(64) NOT NULL DEFAULT '' COMMENT '注释',
   `IsDeleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '1: deleted, 0: normal',

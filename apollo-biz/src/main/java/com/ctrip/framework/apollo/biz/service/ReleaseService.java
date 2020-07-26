@@ -153,6 +153,7 @@ public class ReleaseService {
 
     checkLock(namespace, isEmergencyPublish, changeSets.getDataChangeLastModifiedBy());
 
+    // 配置更新
     itemSetService.updateSet(namespace, changeSets);
 
     Release branchRelease = findLatestActiveRelease(namespace.getAppId(), branchName, namespace
@@ -166,6 +167,7 @@ public class ReleaseService {
     operationContext.put(ReleaseOperationContext.BASE_RELEASE_ID, branchReleaseId);
     operationContext.put(ReleaseOperationContext.IS_EMERGENCY_PUBLISH, isEmergencyPublish);
 
+    // 生成历史版本
     return masterRelease(namespace, releaseName, releaseComment, operateNamespaceItems,
                          changeSets.getDataChangeLastModifiedBy(),
                          ReleaseOperation.GRAY_RELEASE_MERGE_TO_MASTER, operationContext);

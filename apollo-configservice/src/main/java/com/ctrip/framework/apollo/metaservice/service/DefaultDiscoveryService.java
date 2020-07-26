@@ -28,11 +28,13 @@ public class DefaultDiscoveryService implements DiscoveryService {
 
   @Override
   public List<ServiceDTO> getServiceInstances(String serviceId) {
+    // 根据serviceId从 eureka 拿到服务实例信息
     Application application = eurekaClient.getApplication(serviceId);
     if (application == null || CollectionUtils.isEmpty(application.getInstances())) {
       Tracer.logEvent("Apollo.Discovery.NotFound", serviceId);
       return Collections.emptyList();
     }
+    // 返回封装的ServiceDTO的list
     return application.getInstances().stream().map(instanceInfoToServiceDTOFunc)
         .collect(Collectors.toList());
   }

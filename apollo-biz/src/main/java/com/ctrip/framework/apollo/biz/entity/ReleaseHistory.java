@@ -16,6 +16,7 @@ import javax.persistence.Table;
 @Table(name = "ReleaseHistory")
 @SQLDelete(sql = "Update ReleaseHistory set isDeleted = 1 where id = ?")
 @Where(clause = "isDeleted = 0")
+// 历史版本配置
 public class ReleaseHistory extends BaseEntity {
   @Column(name = "AppId", nullable = false)
   private String appId;

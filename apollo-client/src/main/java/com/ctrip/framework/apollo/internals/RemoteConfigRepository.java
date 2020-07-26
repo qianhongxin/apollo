@@ -82,18 +82,28 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     m_namespace = namespace;
     m_configCache = new AtomicReference<>();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    // http通信工具
     m_httpUtil = ApolloInjector.getInstance(HttpUtil.class);
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
     remoteConfigLongPollService = ApolloInjector.getInstance(RemoteConfigLongPollService.class);
     m_longPollServiceDto = new AtomicReference<>();
     m_remoteMessages = new AtomicReference<>();
+    // 限流
     m_loadConfigRateLimiter = RateLimiter.create(m_configUtil.getLoadConfigQPS());
     m_configNeedForceRefresh = new AtomicBoolean(true);
     m_loadConfigFailSchedulePolicy = new ExponentialSchedulePolicy(m_configUtil.getOnErrorRetryInterval(),
         m_configUtil.getOnErrorRetryInterval() * 8);
     gson = new Gson();
+    // 启动同步一次配置
     this.trySync();
+    // 定时每隔5min拉取一次配置
+    // 这是client主动拉取配置
     this.schedulePeriodicRefresh();
+    // 启动一个定时任务（通过 newSingleThreadExecutor 线程池中死循环访问ConfigService，访问之前有限流判断）
+    // ConfigService将变更配置放入 deferredResults 中返回。
+    // 每次请求的超时设置为90s，即如果服务端没有对应配置更新，则会夯筑90s，请求返回，然后这里是while循环，继续下一次请求
+    // 所以这里是用不停的轮训来实现长连接效果
+    // 通过这样实现服务端有变更时可以通知到客户端的效果
     this.scheduleLongPollingRefresh();
   }
 
@@ -118,6 +128,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   private void schedulePeriodicRefresh() {
     logger.debug("Schedule periodic refresh with interval: {} {}",
         m_configUtil.getRefreshInterval(), m_configUtil.getRefreshIntervalTimeUnit());
+    // 每5min定时拉取远程配置到本地
     m_executorService.scheduleAtFixedRate(
         new Runnable() {
           @Override

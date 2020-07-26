@@ -133,6 +133,7 @@ public class ReleaseController {
    *
    * @return published result
    */
+  // 非灰度版本的配置删除，更新，发布接口
   @Transactional
   @PostMapping("/apps/{appId}/clusters/{clusterName}/namespaces/{namespaceName}/updateAndPublish")
   public ReleaseDTO updateAndPublish(@PathVariable("appId") String appId,
@@ -158,6 +159,7 @@ public class ReleaseController {
                                           NamespaceBranchStatus.MERGED, changeSets.getDataChangeLastModifiedBy());
     }
 
+    // 将有配置更新的appId+clusterName+namespace通过数据库和内存队列通知到configService
     messageSender.sendMessage(ReleaseMessageKeyGenerator.generate(appId, clusterName, namespaceName),
                               Topics.APOLLO_RELEASE_TOPIC);
 

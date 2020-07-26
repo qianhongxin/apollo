@@ -163,6 +163,7 @@ public class RemoteConfigLongPollService {
         logger.debug("Long polling from {}", url);
 
         HttpRequest request = new HttpRequest(url);
+        // 90s超时
         request.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
         if (!StringUtils.isBlank(secret)) {
           Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
