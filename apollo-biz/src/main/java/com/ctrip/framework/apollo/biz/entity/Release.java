@@ -36,6 +36,7 @@ public class Release extends BaseEntity {
 
   @Column(name = "Configurations", nullable = false)
   @Lob
+  // 包含当前版本，appId，clusterName，namespaceName下的所有配置
   private String configurations;
 
   @Column(name = "Comment", nullable = false)

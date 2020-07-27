@@ -90,6 +90,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     this.bizConfig = bizConfig;
   }
 
+  // 通知客户端appId，cluster下的各个namespace对应的变更配置
   @GetMapping
   public DeferredResult<ResponseEntity<List<ApolloConfigNotification>>> pollNotification(
       @RequestParam(value = "appId") String appId,

@@ -21,6 +21,7 @@ public abstract class AbstractConfigService implements ConfigService {
   public Release loadConfig(String clientAppId, String clientIp, String configAppId, String configClusterName,
       String configNamespace, String dataCenter, ApolloNotificationMessages clientMessages) {
     // load from specified cluster fist
+      // 查询默认集群的配置
     if (!Objects.equals(ConfigConsts.CLUSTER_NAME_DEFAULT, configClusterName)) {
       Release clusterRelease = findRelease(clientAppId, clientIp, configAppId, configClusterName, configNamespace,
           clientMessages);
@@ -57,15 +58,18 @@ public abstract class AbstractConfigService implements ConfigService {
    */
   private Release findRelease(String clientAppId, String clientIp, String configAppId, String configClusterName,
       String configNamespace, ApolloNotificationMessages clientMessages) {
+      // 查询灰度版本的id
     Long grayReleaseId = grayReleaseRulesHolder.findReleaseIdFromGrayReleaseRule(clientAppId, clientIp, configAppId,
         configClusterName, configNamespace);
 
     Release release = null;
 
+    // 如果某个环境的namespace有灰度配置，优先用灰度配置。比如预发布就用线上环境的灰度配置
     if (grayReleaseId != null) {
       release = findActiveOne(grayReleaseId, clientMessages);
     }
 
+    // 如果灰度配置为空，则用正式版本配置
     if (release == null) {
       release = findLatestActiveRelease(configAppId, configClusterName, configNamespace, clientMessages);
     }

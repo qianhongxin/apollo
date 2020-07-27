@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 
 /**
  * @author Jason Song(song_s@ctrip.com)
+ * 该Bean是在ConfigServiceAutoConfiguration中创建的，AdminService虽然引入了，但是没有使用，只是用了DataBaseMessageSender
  */
 public class ReleaseMessageScanner implements InitializingBean {
   private static final Logger logger = LoggerFactory.getLogger(ReleaseMessageScanner.class);

@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 public class ConfigController {
   private static final Splitter X_FORWARDED_FOR_SPLITTER = Splitter.on(",").omitEmptyStrings()
       .trimResults();
+  // 启动时根据配置看注入的是ConfigServiceWithCache还是DefaultConfigService
   private final ConfigService configService;
   private final AppNamespaceServiceWithCache appNamespaceService;
   private final NamespaceUtil namespaceUtil;
@@ -61,6 +62,7 @@ public class ConfigController {
     this.gson = gson;
   }
 
+  // 拉取指定appId，clusterName，namespace下的配置
   @GetMapping(value = "/{appId}/{clusterName}/{namespace:.+}")
   public ApolloConfig queryConfig(@PathVariable String appId, @PathVariable String clusterName,
                                   @PathVariable String namespace,
