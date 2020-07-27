@@ -156,6 +156,7 @@ public class RemoteConfigLongPollService {
           lastServiceDto = configServices.get(random.nextInt(configServices.size()));
         }
 
+        // 访问的是NotificationControllerV2的pollNotification方法
         url =
             assembleLongPollRefreshUrl(lastServiceDto.getHomepageUrl(), appId, cluster, dataCenter,
                 m_notifications);
@@ -163,7 +164,7 @@ public class RemoteConfigLongPollService {
         logger.debug("Long polling from {}", url);
 
         HttpRequest request = new HttpRequest(url);
-        // 90s超时
+        // 90s超时，服务端的DeferedResult是60s超时，所以一般足够服务端返回了
         request.setReadTimeout(LONG_POLLING_READ_TIMEOUT);
         if (!StringUtils.isBlank(secret)) {
           Map<String, String> headers = Signature.buildHttpHeaders(url, appId, secret);
@@ -280,7 +281,9 @@ public class RemoteConfigLongPollService {
   String assembleLongPollRefreshUrl(String uri, String appId, String cluster, String dataCenter,
                                     Map<String, Long> notificationsMap) {
     Map<String, String> queryParams = Maps.newHashMap();
+    // 设置appId
     queryParams.put("appId", queryParamEscaper.escape(appId));
+    // 设置cluster，默认是default
     queryParams.put("cluster", queryParamEscaper.escape(cluster));
     queryParams
         .put("notifications", queryParamEscaper.escape(assembleNotifications(notificationsMap)));

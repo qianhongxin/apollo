@@ -33,16 +33,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, InitializingBean {
   private static final Logger logger = LoggerFactory.getLogger(ReleaseMessageServiceWithCache
       .class);
+  // ReleaseMessage持久层
   private final ReleaseMessageRepository releaseMessageRepository;
+  // 配置
   private final BizConfig bizConfig;
 
+  // 扫描间隔
   private int scanInterval;
   private TimeUnit scanIntervalTimeUnit;
 
+  // 最大已扫描id
   private volatile long maxIdScanned;
 
+  // ReleaseMessage缓存
   private ConcurrentMap<String, ReleaseMessage> releaseMessageCache;
 
+  // 扫描开关
   private AtomicBoolean doScan;
   private ExecutorService executorService;
 
@@ -56,11 +62,13 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
 
   private void initialize() {
     releaseMessageCache = Maps.newConcurrentMap();
+    // 扫描开关
     doScan = new AtomicBoolean(true);
     executorService = Executors.newSingleThreadExecutor(ApolloThreadFactory
         .create("ReleaseMessageServiceWithCache", true));
   }
 
+  // 查询messages中最新的ReleaseMessage
   public ReleaseMessage findLatestReleaseMessageForMessages(Set<String> messages) {
     if (CollectionUtils.isEmpty(messages)) {
       return null;
@@ -79,6 +87,7 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
     return result;
   }
 
+  // 查询 messages 对应的 ReleaseMessage集合，排好序
   public List<ReleaseMessage> findLatestReleaseMessagesGroupByMessages(Set<String> messages) {
     if (CollectionUtils.isEmpty(messages)) {
       return Collections.emptyList();
@@ -95,6 +104,7 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
     return releaseMessages;
   }
 
+  // 观察者调用的，即ReleaseMessageScanner调用的
   @Override
   public void handleMessage(ReleaseMessage message, String channel) {
     //Could stop once the ReleaseMessageScanner starts to work
@@ -116,14 +126,18 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
     }
   }
 
+  // 启动时调用
   @Override
   public void afterPropertiesSet() throws Exception {
+    // 初始化扫描时间
     populateDataBaseInterval();
     //block the startup process until load finished
     //this should happen before ReleaseMessageScanner due to autowire
+    // 阻塞住spring启动进程，直到加载完成
     loadReleaseMessages(0);
 
     executorService.submit(() -> {
+      // 如果开启扫描，且线程没有打断则执行load
       while (doScan.get() && !Thread.currentThread().isInterrupted()) {
         Transaction transaction = Tracer.newTransaction("Apollo.ReleaseMessageServiceWithCache",
             "scanNewReleaseMessages");
@@ -171,7 +185,9 @@ public class ReleaseMessageServiceWithCache implements ReleaseMessageListener, I
   }
 
   private void populateDataBaseInterval() {
+    // 设置扫描间隔是1s，每扫描一次睡眠1s
     scanInterval = bizConfig.releaseMessageCacheScanInterval();
+    // 扫描单位，秒
     scanIntervalTimeUnit = bizConfig.releaseMessageCacheScanIntervalTimeUnit();
   }
 

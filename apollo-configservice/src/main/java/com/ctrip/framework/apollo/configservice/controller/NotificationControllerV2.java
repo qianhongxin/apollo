@@ -120,6 +120,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
 
     // 创建 DeferredResultWrapper， 给DeferredResult设置的默认超时时间是60s
     DeferredResultWrapper deferredResultWrapper = new DeferredResultWrapper(bizConfig.longPollingTimeoutInMilli());
+    //
     Set<String> namespaces = Sets.newHashSetWithExpectedSize(filteredNotifications.size());
     Map<String, Long> clientSideNotifications = Maps.newHashMapWithExpectedSize(filteredNotifications.size());
     
@@ -157,7 +158,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     });
 
     //register all keys
-      // 将key设置到deferredResults中
+    // 将key设置到deferredResults中
     for (String key : watchedKeys) {
       this.deferredResults.put(key, deferredResultWrapper);
     }
@@ -170,7 +171,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     /**
      * 2、check new release
      */
-    // 如果watchedKeys查出了最新的变更消息即ReleaseMessage，则190直接返回了
+    // 如果watchedKeys查出了最新的变更消息即ReleaseMessage，则190行直接返回了
     List<ReleaseMessage> latestReleaseMessages =
         releaseMessageService.findLatestReleaseMessagesGroupByMessages(watchedKeys);
 
@@ -300,7 +301,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
             }
           }
           logger.debug("Async notify {}", results.get(i));
-          // 这里和192一样，直接setResult，DeferredResult就直接返回给浏览器了
+          // 这里和192行一样，直接setResult，DeferredResult就直接返回给浏览器了
           results.get(i).setResult(configNotification);
         }
       });

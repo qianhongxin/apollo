@@ -224,6 +224,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
           }
         }
 
+        // 访问的是ConfigController的queryConfig方法
         url = assembleQueryConfigUrl(configService.getHomepageUrl(), appId, cluster, m_namespace,
                 dataCenter, m_remoteMessages.get(), m_configCache.get());
 
