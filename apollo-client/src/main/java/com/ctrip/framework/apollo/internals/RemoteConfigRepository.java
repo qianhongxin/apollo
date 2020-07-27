@@ -44,6 +44,9 @@ import org.slf4j.LoggerFactory;
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
+// DefaultConfigManager的getConfig方法会根据用户传入的namespace来创建这里的RemoteConfigRepository
+// 所以传入几个，就有几个RemoteConfigRepository对象，同样的每个RemoteConfigRepository都有自己的定时拉取配置的定时任务
+    // remoteConfigLongPollService 是通过ApolloInjector.getInstance(RemoteConfigLongPollService.class);获取的，多个remoteConfigLongPollService共享同一个
 public class RemoteConfigRepository extends AbstractConfigRepository {
   private static final Logger logger = LoggerFactory.getLogger(RemoteConfigRepository.class);
   private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
