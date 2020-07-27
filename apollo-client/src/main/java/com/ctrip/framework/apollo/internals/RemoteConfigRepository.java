@@ -179,6 +179,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   }
 
   private ApolloConfig loadApolloConfig() {
+      // 限流判断等待
     if (!m_loadConfigRateLimiter.tryAcquire(5, TimeUnit.SECONDS)) {
       //wait at most 5 seconds
       try {
@@ -191,6 +192,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     String dataCenter = m_configUtil.getDataCenter();
     String secret = m_configUtil.getAccessKeySecret();
     Tracer.logEvent("Apollo.Client.ConfigMeta", STRING_JOINER.join(appId, cluster, m_namespace));
+    // 重试次数
     int maxRetries = m_configNeedForceRefresh.get() ? 2 : 1;
     long onErrorSleepTime = 0; // 0 means no sleep
     Throwable exception = null;

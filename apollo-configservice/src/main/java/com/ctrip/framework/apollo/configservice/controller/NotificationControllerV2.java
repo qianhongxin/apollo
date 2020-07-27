@@ -110,13 +110,15 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     if (CollectionUtils.isEmpty(notifications)) {
       throw new BadRequestException("Invalid format of notifications: " + notificationsAsString);
     }
-    
+
+    // 过滤出需要放到DeferredResult中的key
     Map<String, ApolloConfigNotification> filteredNotifications = filterNotifications(appId, notifications);
 
     if (CollectionUtils.isEmpty(filteredNotifications)) {
       throw new BadRequestException("Invalid format of notifications: " + notificationsAsString);
     }
-    
+
+    // 创建 DeferredResultWrapper， 给DeferredResult设置的默认超时时间是60s
     DeferredResultWrapper deferredResultWrapper = new DeferredResultWrapper(bizConfig.longPollingTimeoutInMilli());
     Set<String> namespaces = Sets.newHashSetWithExpectedSize(filteredNotifications.size());
     Map<String, Long> clientSideNotifications = Maps.newHashMapWithExpectedSize(filteredNotifications.size());
@@ -141,9 +143,11 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
      * If the check before setting deferredResult,it may receive a notification the next time
      * when method handleMessage is executed between check and set deferredResult.
      */
+    // 设置deferredResult的超时时间
     deferredResultWrapper
           .onTimeout(() -> logWatchedKeys(watchedKeys, "Apollo.LongPoll.TimeOutKeys"));
 
+    // 设置deferredResult完成时触发的事件
     deferredResultWrapper.onCompletion(() -> {
       //unregister all keys
       for (String key : watchedKeys) {
@@ -153,10 +157,12 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     });
 
     //register all keys
+      // 将key设置到deferredResults中
     for (String key : watchedKeys) {
       this.deferredResults.put(key, deferredResultWrapper);
     }
 
+    // 打印日志
     logWatchedKeys(watchedKeys, "Apollo.LongPoll.RegisteredKeys");
     logger.debug("Listening {} from appId: {}, cluster: {}, namespace: {}, datacenter: {}",
         watchedKeys, appId, cluster, namespaces, dataCenter);
@@ -164,6 +170,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     /**
      * 2、check new release
      */
+    // 如果watchedKeys查出了最新的变更消息即ReleaseMessage，则190直接返回了
     List<ReleaseMessage> latestReleaseMessages =
         releaseMessageService.findLatestReleaseMessagesGroupByMessages(watchedKeys);
 
@@ -175,10 +182,12 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
      */
     entityManagerUtil.closeEntityManager();
 
+    // 封装结果
     List<ApolloConfigNotification> newNotifications =
         getApolloConfigNotifications(namespaces, clientSideNotifications, watchedKeysMap,
             latestReleaseMessages);
 
+    // setResult调用后立即返回给客户端了
     if (!CollectionUtils.isEmpty(newNotifications)) {
       deferredResultWrapper.setResult(newNotifications);
     }
@@ -245,6 +254,8 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     return newNotifications;
   }
 
+  // 该方法是给观察者模式使用的，即ReleaseMessageScanner运行时有变更就通知到这个方法
+
   @Override
   public void handleMessage(ReleaseMessage message, String channel) {
     logger.info("message received - channel: {}, message: {}", channel, message);
@@ -262,6 +273,8 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
       return;
     }
 
+    // deferredResults的key是162行放入的，即通过pollNotification方法注册key的，这里在key未过期的60s内有通知，就set结果返回了
+      // ，如果这里不包括直接返回了
     if (!deferredResults.containsKey(content)) {
       return;
     }
@@ -273,6 +286,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
     configNotification.addMessage(content, message.getId());
 
     //do async notification if too many clients
+      // 防止results的数量过大，所以异步通知客户端：1. 防止handleMessage方法阻塞过久 2.降低DeferredResult超时结束数量
     if (results.size() > bizConfig.releaseMessageNotificationBatch()) {
       largeNotificationBatchExecutorService.submit(() -> {
         logger.debug("Async notify {} clients for key {} with batch {}", results.size(), content,
@@ -286,6 +300,7 @@ public class NotificationControllerV2 implements ReleaseMessageListener {
             }
           }
           logger.debug("Async notify {}", results.get(i));
+          // 这里和192一样，直接setResult，DeferredResult就直接返回给浏览器了
           results.get(i).setResult(configNotification);
         }
       });
