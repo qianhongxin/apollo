@@ -227,6 +227,7 @@ public class RemoteConfigLongPollService {
           .get(String.format("%s.%s", namespaceName, ConfigFileFormat.Properties.getValue())));
       for (RemoteConfigRepository remoteConfigRepository : toBeNotified) {
         try {
+            // 根据获取到的ApolloConfigNotification，根据ReleaseMessageId向RemoteConfigRepository的调度线程池m_executorService提交一个立即调度的任务，查询远程具体配置
           remoteConfigRepository.onLongPollNotified(lastServiceDto, remoteMessages);
         } catch (Throwable ex) {
           Tracer.logError(ex);

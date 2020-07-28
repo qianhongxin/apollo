@@ -438,12 +438,14 @@ public abstract class AbstractConfig implements Config {
     }
   }
 
+  // 异步通知监听者配置变更
   protected void fireConfigChange(final ConfigChangeEvent changeEvent) {
     for (final ConfigChangeListener listener : m_listeners) {
       // check whether the listener is interested in this change event
       if (!isConfigChangeListenerInterested(listener, changeEvent)) {
         continue;
       }
+      // 异步通知ApolloConfigChangeListener监听对象实现配置同步，为啥异步？提高性能，防止应用代码烂阻塞等
       m_executorService.submit(new Runnable() {
         @Override
         public void run() {

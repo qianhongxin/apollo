@@ -158,6 +158,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
       if (previous != current) {
         logger.debug("Remote Config refreshed!");
         m_configCache.set(current);
+        // 通知监听者，配置变更
         this.fireRepositoryChange(m_namespace, this.getConfig());
       }
 
@@ -316,6 +317,8 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
       queryParams.put("ip", queryParamEscaper.escape(localIp));
     }
 
+    // remoteMessages不是null，说明此次调用是RemoteConfigLongPollService的231行发出的，这里需要查询指定的配置
+    // 然后服务端会查询指定版本的配置
     if (remoteMessages != null) {
       queryParams.put("messages", queryParamEscaper.escape(gson.toJson(remoteMessages)));
     }

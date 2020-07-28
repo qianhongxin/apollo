@@ -31,8 +31,10 @@ import com.google.common.util.concurrent.RateLimiter;
 public class DefaultConfig extends AbstractConfig implements RepositoryChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(DefaultConfig.class);
   private final String m_namespace;
+  // 存放从META-INF/config/%s.properties下加载的配置
   private final Properties m_resourceProperties;
   private final AtomicReference<Properties> m_configProperties;
+  // 一般是LocalFileConfigRepository
   private final ConfigRepository m_configRepository;
   private final RateLimiter m_warnLogRateLimiter;
 
@@ -46,6 +48,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
    */
   public DefaultConfig(String namespace, ConfigRepository configRepository) {
     m_namespace = namespace;
+    // 从META-INF/config/m_namespace.properties下加载配置
     m_resourceProperties = loadFromResource(m_namespace);
     m_configRepository = configRepository;
     m_configProperties = new AtomicReference<>();
@@ -63,16 +66,20 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     } finally {
       //register the change listener no matter config repository is working or not
       //so that whenever config repository is recovered, config could get changed
+        // 注册监听器，即@ApolloConfigChangeListener修饰的
       m_configRepository.addChangeListener(this);
     }
   }
 
+  // 获取配置入口
   @Override
   public String getProperty(String key, String defaultValue) {
     // step 1: check system properties, i.e. -Dkey=value
+      // 先从System获取配置
     String value = System.getProperty(key);
 
     // step 2: check local cached properties file
+      // 从本地缓存m_configProperties获取配置
     if (value == null && m_configProperties.get() != null) {
       value = m_configProperties.get().getProperty(key);
     }
@@ -87,6 +94,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     }
 
     // step 4: check properties file from classpath
+      // 从本地配置文件META-INF/config/%s.properties中加载配置
     if (value == null && m_resourceProperties != null) {
       value = m_resourceProperties.getProperty(key);
     }
@@ -95,6 +103,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       logger.warn("Could not load config for namespace {} from Apollo, please check whether the configs are released in Apollo! Return default value now!", m_namespace);
     }
 
+    // 为空返回默认值，降级
     return value == null ? defaultValue : value;
   }
 
@@ -126,6 +135,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     return h.keySet();
   }
 
+    // 配置变更回调，更新配置到m_configProperties
   @Override
   public synchronized void onRepositoryChange(String namespace, Properties newProperties) {
     if (newProperties.equals(m_configProperties.get())) {
@@ -143,16 +153,21 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       return;
     }
 
+    // 调用ApolloConfigChangeListener实现配置变更通知
     this.fireConfigChange(new ConfigChangeEvent(m_namespace, actualChanges));
 
     Tracer.logEvent("Apollo.Client.ConfigChanges", m_namespace);
   }
 
+  // 更新m_configProperties入口
   private void updateConfig(Properties newConfigProperties, ConfigSourceType sourceType) {
+      // 将m_configRepository拿到的配置放到m_configProperties中缓存
     m_configProperties.set(newConfigProperties);
+      // 将m_configRepository拿到的配置来源类型放到m_sourceType
     m_sourceType = sourceType;
   }
 
+  // 具体的处理配置变更的逻辑
   private Map<String, ConfigChange> updateAndCalcConfigChanges(Properties newConfigProperties,
       ConfigSourceType sourceType) {
     List<ConfigChange> configChanges =
@@ -207,6 +222,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     return actualChanges.build();
   }
 
+  // 尝试根据namespace名字，从META-INF/config/%s.properties下加载配置
   private Properties loadFromResource(String namespace) {
     String name = String.format("META-INF/config/%s.properties", namespace);
     InputStream in = ClassLoaderUtil.getLoader().getResourceAsStream(name);

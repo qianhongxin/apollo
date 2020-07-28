@@ -53,6 +53,7 @@ public class DefaultInjector implements Injector {
   }
 
   private static class ApolloModule extends AbstractModule {
+      // 注入配置对象，后面Injector.getInstance时获取
     @Override
     protected void configure() {
       bind(ConfigManager.class).to(DefaultConfigManager.class).in(Singleton.class);

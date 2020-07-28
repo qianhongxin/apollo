@@ -29,6 +29,7 @@ import com.google.common.base.Preconditions;
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
+// 基于本地文件的Repository
 public class LocalFileConfigRepository extends AbstractConfigRepository
     implements RepositoryChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileConfigRepository.class);
@@ -37,6 +38,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   private File m_baseDir;
   private final ConfigUtil m_configUtil;
   private volatile Properties m_fileProperties;
+  // 关联的远程Repository，即RemoteConfigRepository
   private volatile ConfigRepository m_upstream;
 
   private volatile ConfigSourceType m_sourceType = ConfigSourceType.LOCAL;
@@ -54,6 +56,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     m_namespace = namespace;
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     this.setLocalCacheDir(findLocalCacheDir(), false);
+    // 从upstream即RemoteConfigRepository同步配置到LocalFileConfigRepository
     this.setUpstreamRepository(upstream);
     this.trySync();
   }
@@ -104,6 +107,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
     m_upstream = upstreamConfigRepository;
     trySyncFromUpstream();
+    // 监听配置变更，有变化的话119行会被调用，
     upstreamConfigRepository.addChangeListener(this);
   }
 
@@ -112,6 +116,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     return m_sourceType;
   }
 
+  // 配置变更回调，更新本地文件配置
   @Override
   public void onRepositoryChange(String namespace, Properties newProperties) {
     if (newProperties.equals(m_fileProperties)) {
@@ -119,7 +124,9 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
     Properties newFileProperties = propertiesFactory.getPropertiesInstance();
     newFileProperties.putAll(newProperties);
+    // 变化配置同步到本地文件中
     updateFileProperties(newFileProperties, m_upstream.getSourceType());
+      // 通知监听者，配置变更
     this.fireRepositoryChange(namespace, newProperties);
   }
 

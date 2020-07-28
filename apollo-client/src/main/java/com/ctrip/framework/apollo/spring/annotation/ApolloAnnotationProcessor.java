@@ -38,6 +38,8 @@ public class ApolloAnnotationProcessor extends ApolloProcessor {
     ReflectionUtils.setField(field, bean, config);
   }
 
+  // 解析 ApolloConfigChangeListener ，注册到 AbstractConfig 的监听器集合中，当AbstractConfig的配置变更后，
+  // 会通知到这里
   @Override
   protected void processMethod(final Object bean, String beanName, final Method method) {
     ApolloConfigChangeListener annotation = AnnotationUtils

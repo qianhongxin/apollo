@@ -35,10 +35,13 @@ public class DefaultConfigFactory implements ConfigFactory {
 
   @Override
   public Config create(String namespace) {
+      // 获取namespace的配置格式，比如yml，properties等
     ConfigFileFormat format = determineFileFormat(namespace);
+    // 如果format是YAML或YML，传入DefaultConfig的ConfigRepository是PropertiesCompatibleFileConfigRepository
     if (ConfigFileFormat.isPropertiesCompatible(format)) {
       return new DefaultConfig(namespace, createPropertiesCompatibleFileConfigRepository(namespace, format));
     }
+      // 传入DefaultConfig的ConfigRepository是LocalFileConfigRepository,大部分情况下走这边的
     return new DefaultConfig(namespace, createLocalConfigRepository(namespace));
   }
 
@@ -90,11 +93,13 @@ public class DefaultConfigFactory implements ConfigFactory {
   ConfigFileFormat determineFileFormat(String namespaceName) {
     String lowerCase = namespaceName.toLowerCase();
     for (ConfigFileFormat format : ConfigFileFormat.values()) {
+        // 如果namespaceName是有.号且对应format结尾，直接返回format
       if (lowerCase.endsWith("." + format.getValue())) {
         return format;
       }
     }
 
+    // 返回 properties
     return ConfigFileFormat.Properties;
   }
 

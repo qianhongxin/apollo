@@ -9,8 +9,9 @@ import com.google.common.collect.Maps;
  * @author Jason Song(song_s@ctrip.com)
  */
 public class DefaultConfigFactoryManager implements ConfigFactoryManager {
+    // ConfigRegistry用的是默认的DefaultConfigRegistry，单例
   private ConfigRegistry m_registry;
-
+    // 存储namespace和ConfigFactory的对应关系缓存，存储创建的
   private Map<String, ConfigFactory> m_factories = Maps.newConcurrentMap();
 
   public DefaultConfigFactoryManager() {

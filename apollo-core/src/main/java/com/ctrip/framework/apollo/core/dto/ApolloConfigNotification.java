@@ -4,7 +4,9 @@ package com.ctrip.framework.apollo.core.dto;
  * @author Jason Song(song_s@ctrip.com)
  */
 public class ApolloConfigNotification {
+  // NotificationControllerV2的207行的originalNamespace
   private String namespaceName;
+  // ReleaseMessage的主键id
   private long notificationId;
   private volatile ApolloNotificationMessages messages;
 

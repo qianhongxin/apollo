@@ -15,10 +15,12 @@ import com.ctrip.framework.apollo.spi.ConfigRegistry;
 public class ConfigService {
   private static final ConfigService s_instance = new ConfigService();
 
+  // 目前系统就一个实现，即DefaultConfigManager
   private volatile ConfigManager m_configManager;
   private volatile ConfigRegistry m_configRegistry;
 
   private ConfigManager getManager() {
+      // double check实现单例模式
     if (m_configManager == null) {
       synchronized (this) {
         if (m_configManager == null) {

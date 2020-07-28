@@ -35,6 +35,7 @@ public abstract class AbstractConfigRepository implements ConfigRepository {
 
   protected abstract void sync();
 
+  // 注册监听器
   @Override
   public void addChangeListener(RepositoryChangeListener listener) {
     if (!m_listeners.contains(listener)) {
@@ -42,14 +43,17 @@ public abstract class AbstractConfigRepository implements ConfigRepository {
     }
   }
 
+  // 删除监听器
   @Override
   public void removeChangeListener(RepositoryChangeListener listener) {
     m_listeners.remove(listener);
   }
 
+  // 通知监听者，仓库配置变更
   protected void fireRepositoryChange(String namespace, Properties newProperties) {
     for (RepositoryChangeListener listener : m_listeners) {
       try {
+          // 调用监听者，将变化的配置通知到
         listener.onRepositoryChange(namespace, newProperties);
       } catch (Throwable ex) {
         Tracer.logError(ex);
