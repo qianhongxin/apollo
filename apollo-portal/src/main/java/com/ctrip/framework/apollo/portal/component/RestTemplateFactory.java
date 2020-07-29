@@ -36,6 +36,7 @@ public class RestTemplateFactory implements FactoryBean<RestTemplate>, Initializ
   }
 
   public void afterPropertiesSet() throws UnsupportedEncodingException {
+      // RestTemplate底层基于apache httpclient通信
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
 
     restTemplate = new RestTemplate(httpMessageConverters.getConverters());
