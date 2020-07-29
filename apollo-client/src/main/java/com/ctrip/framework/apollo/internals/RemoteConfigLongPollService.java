@@ -152,6 +152,7 @@ public class RemoteConfigLongPollService {
       String url = null;
       try {
         if (lastServiceDto == null) {
+            // 内部会根据当前的env，idc获取config service地址
           List<ServiceDTO> configServices = getConfigServices();
           lastServiceDto = configServices.get(random.nextInt(configServices.size()));
         }

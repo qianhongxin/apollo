@@ -19,9 +19,12 @@ public class DefaultServerProvider implements ServerProvider {
   private static final String SERVER_PROPERTIES_LINUX = "/opt/settings/server.properties";
   private static final String SERVER_PROPERTIES_WINDOWS = "C:/opt/settings/server.properties";
 
+  // 指向的环境，比如dev，fat，uat，pro等
   private String m_env;
+  // m_env下指向的集群，默认是default集群
   private String m_dc;
 
+  // 包含env，idc信息
   private Properties m_serverProperties = new Properties();
 
   @Override
@@ -54,7 +57,9 @@ public class DefaultServerProvider implements ServerProvider {
         }
       }
 
+      // 加载当前client配置的环境
       initEnvType();
+      // 加载当前client配置的集群
       initDataCenter();
     } catch (Throwable ex) {
       logger.error("Initialize DefaultServerProvider failed.", ex);
@@ -81,6 +86,7 @@ public class DefaultServerProvider implements ServerProvider {
     return m_env != null;
   }
 
+  // 可以根据dc获取到idc，环境需要用env获取
   @Override
   public String getProperty(String name, String defaultValue) {
     if ("env".equalsIgnoreCase(name)) {
