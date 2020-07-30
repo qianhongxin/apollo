@@ -31,12 +31,17 @@ import com.google.common.escape.Escaper;
 import com.google.common.net.UrlEscapers;
 import com.google.gson.reflect.TypeToken;
 
+// ConfigService实例地址加载器
 public class ConfigServiceLocator {
   private static final Logger logger = LoggerFactory.getLogger(ConfigServiceLocator.class);
+  // http通信工具类
   private HttpUtil m_httpUtil;
+  // 配置获取工具类
   private ConfigUtil m_configUtil;
+  // 保存加载过的ConfigService实例地址，利用AtomicReference保证并发更新的原子性，
   private AtomicReference<List<ServiceDTO>> m_configServices;
   private Type m_responseType;
+  // 定时任务调度线程池
   private ScheduledExecutorService m_executorService;
   private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
@@ -58,6 +63,7 @@ public class ConfigServiceLocator {
 
   private void initConfigServices() {
     // get from run time configurations
+      // 直接从本地配置的环境中加载ConfigService地址，如果有就不从远程访问获取了。这种方便本地开发使用，可能也有其他情况会用到
     List<ServiceDTO> customizedConfigServices = getCustomizedConfigService();
 
     if (customizedConfigServices != null) {
@@ -66,11 +72,14 @@ public class ConfigServiceLocator {
     }
 
     // update from meta service
+      // 启动时主动加载一次
     this.tryUpdateConfigServices();
+      // 每隔5min刷新一次缓存m_configServices中的configservice实例地址
     this.schedulePeriodicRefresh();
   }
 
-  private List<ServiceDTO> getCustomizedConfigService() {
+    // 直接从本地配置的环境中加载ConfigService地址，如果有就不从远程访问获取了。这种方便本地开发使用，可能也有其他情况会用到
+    private List<ServiceDTO> getCustomizedConfigService() {
     // 1. Get from System Property
     String configServices = System.getProperty("apollo.configService");
     if (Strings.isNullOrEmpty(configServices)) {
@@ -128,6 +137,7 @@ public class ConfigServiceLocator {
   }
 
   private void schedulePeriodicRefresh() {
+      // 每隔5min刷新一次缓存m_configServices中的configservice实例地址
     this.m_executorService.scheduleAtFixedRate(
         new Runnable() {
           @Override
@@ -151,6 +161,7 @@ public class ConfigServiceLocator {
       Transaction transaction = Tracer.newTransaction("Apollo.MetaService", "getConfigService");
       transaction.addData("Url", url);
       try {
+          // 拿到当前env指向环境的ConfigService的所有实例地址信息
         HttpResponse<List<ServiceDTO>> response = m_httpUtil.doGet(request, m_responseType);
         transaction.setStatus(Transaction.SUCCESS);
         List<ServiceDTO> services = response.getBody();
@@ -184,6 +195,7 @@ public class ConfigServiceLocator {
     logConfigServices(services);
   }
 
+  // 构造访问ConfigService中ServiceController中的/services/config的接口的url地址
   private String assembleMetaServiceUrl() {
     String domainName = m_configUtil.getMetaServerDomainName();
     String appId = m_configUtil.getAppId();

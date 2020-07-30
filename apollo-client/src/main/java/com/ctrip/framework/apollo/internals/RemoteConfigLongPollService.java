@@ -49,23 +49,34 @@ import org.slf4j.LoggerFactory;
 public class RemoteConfigLongPollService {
   private static final Logger logger = LoggerFactory.getLogger(RemoteConfigLongPollService.class);
   private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
+  // url参数拼接工具
   private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
   private static final long INIT_NOTIFICATION_ID = ConfigConsts.NOTIFICATION_ID_PLACEHOLDER;
   //90 seconds, should be longer than server side's long polling timeout, which is now 60 seconds
+    // 因为服务端长连接维持对象DeferedResult的结果等待超时时间是60s，所以这里大于60s，设为90s，保证足够
+    // 而且这里是在单线程中死循环轮询服务器，所以时效性也很高，不亚于websocket，
+    // 当前场景下足够了，利用短连接轮询实现长连接
   private static final int LONG_POLLING_READ_TIMEOUT = 90 * 1000;
+  // 长轮询调度线程池
   private final ExecutorService m_longPollingService;
+    // 长轮询关闭标识
   private final AtomicBoolean m_longPollingStopped;
   private SchedulePolicy m_longPollFailSchedulePolicyInSecond;
+  // 长轮询限流器
   private RateLimiter m_longPollRateLimiter;
+  // 长轮询开启标识
   private final AtomicBoolean m_longPollStarted;
+  // 存储namespace和RemoteConfigRepository关系的map
   private final Multimap<String, RemoteConfigRepository> m_longPollNamespaces;
+  // 存储namespace和ReleaseMessage的id的关系，即保存已经拉取的namespace对应的最新的版本的配置的id
   private final ConcurrentMap<String, Long> m_notifications;
   private final Map<String, ApolloNotificationMessages> m_remoteNotificationMessages;//namespaceName -> watchedKey -> notificationId
   private Type m_responseType;
   private Gson gson;
   private ConfigUtil m_configUtil;
   private HttpUtil m_httpUtil;
+  // ConfigService实例地址加载器
   private ConfigServiceLocator m_serviceLocator;
 
   /**
@@ -91,6 +102,8 @@ public class RemoteConfigLongPollService {
   }
 
   public boolean submit(String namespace, RemoteConfigRepository remoteConfigRepository) {
+      // 每次getConfig时传入的namespace和他对应的remoteConfigRepository都会存储在这里，后边配置更新了
+      // 可以根据remoteConfigRepository去抓取远程配置
     boolean added = m_longPollNamespaces.put(namespace, remoteConfigRepository);
     m_notifications.putIfAbsent(namespace, INIT_NOTIFICATION_ID);
     if (!m_longPollStarted.get()) {

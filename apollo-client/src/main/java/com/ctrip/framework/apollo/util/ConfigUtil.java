@@ -19,6 +19,7 @@ import com.google.common.base.Strings;
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
+// 存储着项目中需要的各种配置，包括各种定时任务的时间，单位，缓存过期时间等
 public class ConfigUtil {
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigUtil.class);
