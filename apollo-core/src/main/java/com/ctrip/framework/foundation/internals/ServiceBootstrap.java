@@ -16,6 +16,7 @@ public class ServiceBootstrap {
           "No implementation defined in /META-INF/services/%s, please check whether the file exists and has the right implementation class!",
           clazz.getName()));
     }
+    // 调用这行，底层就是在加载对应字节码，并调用默认构造方法创建对象
     return iterator.next();
   }
 
@@ -25,6 +26,7 @@ public class ServiceBootstrap {
     return loader.iterator();
   }
 
+  // 改方法加载类需要实现Ordered接口，有顺序功能
   public static <S extends Ordered> List<S> loadAllOrdered(Class<S> clazz) {
     Iterator<S> iterator = loadAll(clazz);
 

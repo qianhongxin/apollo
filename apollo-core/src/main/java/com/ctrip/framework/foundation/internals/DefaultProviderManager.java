@@ -15,6 +15,7 @@ public class DefaultProviderManager implements ProviderManager {
   private static final Logger logger = LoggerFactory.getLogger(DefaultProviderManager.class);
   private Map<Class<? extends Provider>, Provider> m_providers = new LinkedHashMap<>();
 
+  // 该方法会在ServiceLoader中调用，入口：ServiceBootstrap 20行
   public DefaultProviderManager() {
     // Load per-application configuration, like app id, from classpath://META-INF/app.properties
     Provider applicationProvider = new DefaultApplicationProvider();
