@@ -53,11 +53,16 @@ public class ConfigFileController implements ReleaseMessageListener {
   private static final Joiner STRING_JOINER = Joiner.on(ConfigConsts.CLUSTER_NAMESPACE_SEPARATOR);
   private static final Splitter X_FORWARDED_FOR_SPLITTER = Splitter.on(",").omitEmptyStrings()
       .trimResults();
+  // localCache的最大缓存数据 写死的 50Mb，基本足够了，一套环境下的配置大小加起来一般不会超过50MB
   private static final long MAX_CACHE_SIZE = 50 * 1024 * 1024; // 50MB
   private static final long EXPIRE_AFTER_WRITE = 30;
   private final HttpHeaders propertiesResponseHeaders;
   private final HttpHeaders jsonResponseHeaders;
   private final ResponseEntity<String> NOT_FOUND_RESPONSE;
+
+  // configfile的controller级别缓存,
+  // key是：json+192342134+default+application或者properties+192342134+default+application
+  // value是：具体版本的配置即ReleaseMessage中的值，不过格式是properties或json格式
   private Cache<String, String> localCache;
   private final Multimap<String, String>
       watchedKeys2CacheKey = Multimaps.synchronizedSetMultimap(HashMultimap.create());
@@ -75,10 +80,14 @@ public class ConfigFileController implements ReleaseMessageListener {
       final NamespaceUtil namespaceUtil,
       final WatchKeysUtil watchKeysUtil,
       final GrayReleaseRulesHolder grayReleaseRulesHolder) {
+
     localCache = CacheBuilder.newBuilder()
+            // 默认30分钟过期
         .expireAfterWrite(EXPIRE_AFTER_WRITE, TimeUnit.MINUTES)
         .weigher((Weigher<String, String>) (key, value) -> value == null ? 0 : value.length())
+            // 缓存最大大小50MB
         .maximumWeight(MAX_CACHE_SIZE)
+            // 从localCache删除数据时调用，这里会更新watchedKeys2CacheKey和watchedKeys2CacheKey
         .removalListener(notification -> {
           String cacheKey = notification.getKey();
           logger.debug("removing cache key: {}", cacheKey);
@@ -94,10 +103,13 @@ public class ConfigFileController implements ReleaseMessageListener {
           logger.debug("removed cache key: {}", cacheKey);
         })
         .build();
+
+    // 不同文件的响应头
     propertiesResponseHeaders = new HttpHeaders();
     propertiesResponseHeaders.add("Content-Type", "text/plain;charset=UTF-8");
     jsonResponseHeaders = new HttpHeaders();
     jsonResponseHeaders.add("Content-Type", "application/json;charset=UTF-8");
+
     NOT_FOUND_RESPONSE = new ResponseEntity<>(HttpStatus.NOT_FOUND);
     this.configController = configController;
     this.namespaceUtil = namespaceUtil;
@@ -238,6 +250,7 @@ public class ConfigFileController implements ReleaseMessageListener {
     return result;
   }
 
+  // 生成cachekey，示例：json+192342134+default+application/properties+192342134+default+application
   String assembleCacheKey(ConfigFileOutputFormat outputFormat, String appId, String clusterName,
                           String namespace,
                           String dataCenter) {

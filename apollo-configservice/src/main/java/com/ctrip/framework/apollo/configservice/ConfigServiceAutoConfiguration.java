@@ -29,11 +29,13 @@ public class ConfigServiceAutoConfiguration {
     this.bizConfig = bizConfig;
   }
 
+  // 创建灰度版本配置获取和更新组件
   @Bean
   public GrayReleaseRulesHolder grayReleaseRulesHolder() {
     return new GrayReleaseRulesHolder();
   }
 
+    // 创建ConfigService组件
   @Bean
   public ConfigService configService() {
       // 如果配置config-service.cache.enabled为true，则创建ConfigServiceWithCache，否则创建DefaultConfigService。默认为false

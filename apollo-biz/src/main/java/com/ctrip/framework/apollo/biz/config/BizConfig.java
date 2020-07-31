@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Component;
 
 @Component
+// 参数获取工具类组件
 public class BizConfig extends RefreshableConfig {
 
   private static final int DEFAULT_ITEM_KEY_LENGTH = 128;

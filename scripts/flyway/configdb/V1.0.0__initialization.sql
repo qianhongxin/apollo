@@ -282,6 +282,7 @@ CREATE TABLE `Release` (
   `AppId` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'AppID',
   `ClusterName` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'ClusterName',
   `NamespaceName` varchar(500) NOT NULL DEFAULT 'default' COMMENT 'namespaceName',
+  -- 存放当前发布namespace的所有配置，即当前环境的所有配置 --
   `Configurations` longtext NOT NULL COMMENT '发布配置',
   `IsAbandoned` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否废弃',
   `IsDeleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '1: deleted, 0: normal',

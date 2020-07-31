@@ -51,6 +51,8 @@ public class ConfigServiceWithCache extends AbstractConfigService {
   @Autowired
   private ReleaseMessageService releaseMessageService;
 
+  // key:appId+clusterName+namespaceName
+  // value:ConfigCacheEntry即包含 Release 和 notificationId（notificationId即 ReleaseMessage 的id）
   private LoadingCache<String, ConfigCacheEntry> configCache;
 
   private LoadingCache<Long, Optional<Release>> configIdCache;
@@ -64,7 +66,9 @@ public class ConfigServiceWithCache extends AbstractConfigService {
   @PostConstruct
   void initialize() {
     configCache = CacheBuilder.newBuilder()
+            // 每小时过期一次
         .expireAfterAccess(DEFAULT_EXPIRED_AFTER_ACCESS_IN_MINUTES, TimeUnit.MINUTES)
+            // 访问到不存在的key时，就调用该方法加载
         .build(new CacheLoader<String, ConfigCacheEntry>() {
           @Override
           public ConfigCacheEntry load(String key) throws Exception {
@@ -101,7 +105,9 @@ public class ConfigServiceWithCache extends AbstractConfigService {
           }
         });
     configIdCache = CacheBuilder.newBuilder()
+            // 每小时过期一次
         .expireAfterAccess(DEFAULT_EXPIRED_AFTER_ACCESS_IN_MINUTES, TimeUnit.MINUTES)
+            // 访问到不存在的key时，就调用该方法加载
         .build(new CacheLoader<Long, Optional<Release>>() {
           @Override
           public Optional<Release> load(Long key) throws Exception {
