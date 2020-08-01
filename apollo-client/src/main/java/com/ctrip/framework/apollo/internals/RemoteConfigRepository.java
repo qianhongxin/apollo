@@ -191,8 +191,11 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
       } catch (InterruptedException e) {
       }
     }
+    // 获取当前实例的appid
     String appId = m_configUtil.getAppId();
+    // 获取当前实例的集群名字
     String cluster = m_configUtil.getCluster();
+    // 获取当前实例的集群名字
     String dataCenter = m_configUtil.getDataCenter();
     String secret = m_configUtil.getAccessKeySecret();
     Tracer.logEvent("Apollo.Client.ConfigMeta", STRING_JOINER.join(appId, cluster, m_namespace));
