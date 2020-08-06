@@ -223,6 +223,7 @@ public class ConfigUtil {
       return cacheRoot + File.separator + getAppId();
     }
 
+    // 不同操作系统，配置文件存放路径不同
     cacheRoot = isOSWindows() ? "C:\\opt\\data\\%s" : "/opt/data/%s";
     return String.format(cacheRoot, getAppId());
   }

@@ -35,8 +35,10 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   private static final Logger logger = LoggerFactory.getLogger(LocalFileConfigRepository.class);
   private static final String CONFIG_DIR = "/config-cache";
   private final String m_namespace;
+  //
   private File m_baseDir;
   private final ConfigUtil m_configUtil;
+  // 本地文件对应properties
   private volatile Properties m_fileProperties;
   // 关联的远程Repository，即RemoteConfigRepository
   private volatile ConfigRepository m_upstream;
@@ -56,8 +58,9 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     m_namespace = namespace;
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     this.setLocalCacheDir(findLocalCacheDir(), false);
-    // 从upstream即RemoteConfigRepository同步配置到LocalFileConfigRepository
+    // 从upstream即RemoteConfigRepository，从远程拉取配置，并放入本地磁盘文件缓存
     this.setUpstreamRepository(upstream);
+    // 从本地磁盘文件加载配置缓存到m_fileProperties
     this.trySync();
   }
 
@@ -69,8 +72,10 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
   }
 
+  // 查找本地缓存配置的文件
   private File findLocalCacheDir() {
     try {
+        // 本地配置文件路径
       String defaultCacheDir = m_configUtil.getDefaultLocalCacheDir();
       Path path = Paths.get(defaultCacheDir);
       if (!Files.exists(path)) {
@@ -106,6 +111,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
       m_upstream.removeChangeListener(this);
     }
     m_upstream = upstreamConfigRepository;
+    // 从m_upstream指向的Repository即RemoteRepository从远程拉取配置，并合并到LocalFileConfigRepository维护的本地文件中缓存
     trySyncFromUpstream();
     // 监听配置变更，有变化的话119行会被调用，
     upstreamConfigRepository.addChangeListener(this);
@@ -167,6 +173,8 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
       return false;
     }
     try {
+        // m_upstream.getConfig()从远程拉取配置
+
       updateFileProperties(m_upstream.getConfig(), m_upstream.getSourceType());
       return true;
     } catch (Throwable ex) {
