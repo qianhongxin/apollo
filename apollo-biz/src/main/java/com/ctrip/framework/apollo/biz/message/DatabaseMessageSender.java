@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DatabaseMessageSender implements MessageSender {
   private static final Logger logger = LoggerFactory.getLogger(DatabaseMessageSender.class);
   private static final int CLEAN_QUEUE_MAX_SIZE = 100;
+  // 队列最大大小100
   private BlockingQueue<Long> toClean = Queues.newLinkedBlockingQueue(CLEAN_QUEUE_MAX_SIZE);
   private final ExecutorService cleanExecutorService;
   private final AtomicBoolean cleanStopped;
@@ -55,7 +56,7 @@ public class DatabaseMessageSender implements MessageSender {
     try {
 
       // 保存配置更新保存到数据库
-      // 保存的是appId+clusterName+namespace
+      // 保存的message是appId+clusterName+namespace
       ReleaseMessage newMessage = releaseMessageRepository.save(new ReleaseMessage(message));
       // 发布ReleaseMessage的id保存到内存队列
       toClean.offer(newMessage.getId());
