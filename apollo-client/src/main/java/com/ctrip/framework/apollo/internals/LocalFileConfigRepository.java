@@ -34,8 +34,9 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     implements RepositoryChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileConfigRepository.class);
   private static final String CONFIG_DIR = "/config-cache";
+  // 存储namespace值
   private final String m_namespace;
-  //
+  // 文件配置的磁盘路径
   private File m_baseDir;
   private final ConfigUtil m_configUtil;
   // 本地文件对应properties
@@ -43,6 +44,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   // 关联的远程Repository，即RemoteConfigRepository
   private volatile ConfigRepository m_upstream;
 
+  // 标识配置来源：LOCAL来源本地缓存的文件加载的，ROMOTE：从远程config service抓取的
   private volatile ConfigSourceType m_sourceType = ConfigSourceType.LOCAL;
 
   /**
@@ -57,6 +59,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   public LocalFileConfigRepository(String namespace, ConfigRepository upstream) {
     m_namespace = namespace;
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
+    // 本地磁盘文件的创建，如果不存在
     this.setLocalCacheDir(findLocalCacheDir(), false);
     // 从upstream即RemoteConfigRepository，从远程拉取配置，并放入本地磁盘文件缓存
     this.setUpstreamRepository(upstream);
@@ -93,9 +96,11 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
 
   @Override
   public Properties getConfig() {
+      // 如果m_fileProperties为空，做加载配置操作
     if (m_fileProperties == null) {
       sync();
     }
+    // 将配置放在新建的properties中返回
     Properties result = propertiesFactory.getPropertiesInstance();
     result.putAll(m_fileProperties);
     return result;
@@ -136,20 +141,25 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     this.fireRepositoryChange(namespace, newProperties);
   }
 
+  // 配置同步
   @Override
   protected void sync() {
     //sync with upstream immediately
+      // 尝试从远程拉取配置，如果加载成功会同时更新m_fileProperties和本地磁盘文件的配置
     boolean syncFromUpstreamResultSuccess = trySyncFromUpstream();
 
     if (syncFromUpstreamResultSuccess) {
       return;
     }
 
+    // 走到这，说明从远程加载配置失败，直接从本地文件加载
     Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "syncLocalConfig");
     Throwable exception = null;
     try {
       transaction.addData("Basedir", m_baseDir.getAbsolutePath());
+      // 将磁盘文件的配置加载到m_fileProperties中
       m_fileProperties = this.loadFromLocalCacheFile(m_baseDir, m_namespace);
+      // 设置m_sourceType为LOCAL
       m_sourceType = ConfigSourceType.LOCAL;
       transaction.setStatus(Transaction.SUCCESS);
     } catch (Throwable ex) {
@@ -168,13 +178,14 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
   }
 
+  // 尝试从关联的Repository同步配置
   private boolean trySyncFromUpstream() {
+      // 关联的Repository为空，则返回false，同步失败
     if (m_upstream == null) {
       return false;
     }
     try {
-        // m_upstream.getConfig()从远程拉取配置
-
+        // m_upstream.getConfig()从远程拉取配置，并更新到本地磁盘文件
       updateFileProperties(m_upstream.getConfig(), m_upstream.getSourceType());
       return true;
     } catch (Throwable ex) {
@@ -188,16 +199,21 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
 
   private synchronized void updateFileProperties(Properties newProperties, ConfigSourceType sourceType) {
     this.m_sourceType = sourceType;
+    // 会比较两个properties中的内容是否一样
     if (newProperties.equals(m_fileProperties)) {
       return;
     }
+    // 走到这，说明配置有变化
     this.m_fileProperties = newProperties;
+    // 更新本地磁盘文件缓存的配置
     persistLocalCacheFile(m_baseDir, m_namespace);
   }
 
+  // 从本地磁盘文件加载配置并返回
   private Properties loadFromLocalCacheFile(File baseDir, String namespace) throws IOException {
     Preconditions.checkNotNull(baseDir, "Basedir cannot be null");
 
+    // 创建file指向磁盘的配置文件
     File file = assembleLocalCacheFile(baseDir, namespace);
     Properties properties = null;
 
@@ -207,6 +223,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
       try {
         in = new FileInputStream(file);
         properties = propertiesFactory.getPropertiesInstance();
+        // 读配置
         properties.load(in);
         logger.debug("Loading local config file {} successfully!", file.getAbsolutePath());
       } catch (IOException ex) {
@@ -230,10 +247,12 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     return properties;
   }
 
+  // 持久化配置到本地磁盘
   void persistLocalCacheFile(File baseDir, String namespace) {
     if (baseDir == null) {
       return;
     }
+    // 创建一个新文件
     File file = assembleLocalCacheFile(baseDir, namespace);
 
     OutputStream out = null;
@@ -241,6 +260,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "persistLocalConfigFile");
     transaction.addData("LocalConfigFile", file.getAbsolutePath());
     try {
+        // 覆盖磁盘的旧文件
       out = new FileOutputStream(file);
       m_fileProperties.store(out, "Persisted by DefaultConfig");
       transaction.setStatus(Transaction.SUCCESS);
@@ -264,6 +284,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
   }
 
+  // 检查baseDir是否存在，不存在则创建文件
   private void checkLocalConfigCacheDir(File baseDir) {
     if (baseDir.exists()) {
       return;
@@ -271,6 +292,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "createLocalConfigDir");
     transaction.addData("BaseDir", baseDir.getAbsolutePath());
     try {
+        // 创建文件
       Files.createDirectory(baseDir.toPath());
       transaction.setStatus(Transaction.SUCCESS);
     } catch (IOException ex) {

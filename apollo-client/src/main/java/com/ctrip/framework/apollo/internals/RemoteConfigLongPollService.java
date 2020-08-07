@@ -52,6 +52,7 @@ public class RemoteConfigLongPollService {
   // url参数拼接工具
   private static final Joiner.MapJoiner MAP_JOINER = Joiner.on("&").withKeyValueSeparator("=");
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
+  // 该值意义是：配置的版本的id，即服务端Release的主键
   private static final long INIT_NOTIFICATION_ID = ConfigConsts.NOTIFICATION_ID_PLACEHOLDER;
   //90 seconds, should be longer than server side's long polling timeout, which is now 60 seconds
     // 因为服务端长连接维持对象DeferedResult的结果等待超时时间是60s，所以这里大于60s，设为90s，保证足够
@@ -65,7 +66,7 @@ public class RemoteConfigLongPollService {
   private SchedulePolicy m_longPollFailSchedulePolicyInSecond;
   // 长轮询限流器
   private RateLimiter m_longPollRateLimiter;
-  // 长轮询开启标识
+  // 长轮询开启标识，默认是false
   private final AtomicBoolean m_longPollStarted;
   // 存储namespace和RemoteConfigRepository关系的map
   private final Multimap<String, RemoteConfigRepository> m_longPollNamespaces;
@@ -83,21 +84,30 @@ public class RemoteConfigLongPollService {
    * Constructor.
    */
   public RemoteConfigLongPollService() {
+      // 基于指数退避的失败调度策略，初始值是1s，最大值是120s
     m_longPollFailSchedulePolicyInSecond = new ExponentialSchedulePolicy(1, 120); //in second
-    m_longPollingStopped = new AtomicBoolean(false);
+        // 长轮询关闭标识
+      m_longPollingStopped = new AtomicBoolean(false);
     m_longPollingService = Executors.newSingleThreadExecutor(
         ApolloThreadFactory.create("RemoteConfigLongPollService", true));
+      // 长轮询开启标识
     m_longPollStarted = new AtomicBoolean(false);
+      // 存储namespace和RemoteConfigRepository关系的map
     m_longPollNamespaces =
         Multimaps.synchronizedSetMultimap(HashMultimap.<String, RemoteConfigRepository>create());
+      // 存储namespace和ReleaseMessage的id的关系，即保存已经拉取的namespace对应的最新的版本的配置的id
     m_notifications = Maps.newConcurrentMap();
+    //namespaceName -> watchedKey -> notificationId
     m_remoteNotificationMessages = Maps.newConcurrentMap();
     m_responseType = new TypeToken<List<ApolloConfigNotification>>() {
     }.getType();
+    // 序列化，反序列化用
     gson = new Gson();
     m_configUtil = ApolloInjector.getInstance(ConfigUtil.class);
     m_httpUtil = ApolloInjector.getInstance(HttpUtil.class);
+    // 加载ConfigService用，拉取配置的地址获取器
     m_serviceLocator = ApolloInjector.getInstance(ConfigServiceLocator.class);
+    // 长轮询限流器
     m_longPollRateLimiter = RateLimiter.create(m_configUtil.getLongPollQPS());
   }
 
@@ -105,14 +115,17 @@ public class RemoteConfigLongPollService {
       // 每次getConfig时传入的namespace和他对应的remoteConfigRepository都会存储在这里，后边配置更新了
       // 可以根据remoteConfigRepository去抓取远程配置
     boolean added = m_longPollNamespaces.put(namespace, remoteConfigRepository);
+    // 设置namespace对应的初始配置版本的id
     m_notifications.putIfAbsent(namespace, INIT_NOTIFICATION_ID);
     if (!m_longPollStarted.get()) {
+        // 开启长轮询
       startLongPolling();
     }
     return added;
   }
 
   private void startLongPolling() {
+      // cas操作，开启长轮询，解决并发安全问题。即必须只允许存在一个发起长连接的线程
     if (!m_longPollStarted.compareAndSet(false, true)) {
       //already started
       return;

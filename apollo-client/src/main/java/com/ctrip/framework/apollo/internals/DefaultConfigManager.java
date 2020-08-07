@@ -51,6 +51,7 @@ public class DefaultConfigManager implements ConfigManager {
 
   @Override
   public ConfigFile getConfigFile(String namespace, ConfigFileFormat configFileFormat) {
+      // namespace="application",configFileFormat=xml  ---> namespaceFileName=application.xml
     String namespaceFileName = String.format("%s.%s", namespace, configFileFormat.getValue());
     ConfigFile configFile = m_configFiles.get(namespaceFileName);
 

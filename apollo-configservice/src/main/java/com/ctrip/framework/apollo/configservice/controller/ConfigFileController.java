@@ -223,6 +223,7 @@ public class ConfigFileController implements ReleaseMessageListener {
     return result;
   }
 
+  // 调用configController的queryConfig方法，将拿到ApolloConfig,转成需要的格式即PROPERTIES或JSON等
   private String loadConfig(ConfigFileOutputFormat outputFormat, String appId, String clusterName,
                             String namespace, String dataCenter, String clientIp,
                             HttpServletRequest request,

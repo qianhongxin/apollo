@@ -54,11 +54,17 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
   private static final Escaper pathEscaper = UrlEscapers.urlPathSegmentEscaper();
   private static final Escaper queryParamEscaper = UrlEscapers.urlFormParameterEscaper();
 
+  // ConfigService地址加载器
   private final ConfigServiceLocator m_serviceLocator;
+  // http通信工具类
   private final HttpUtil m_httpUtil;
+  // 配置存储工具类
   private final ConfigUtil m_configUtil;
+  // 远程配置长轮询类
   private final RemoteConfigLongPollService remoteConfigLongPollService;
+  // 存储着本地环境，集群，namespace，版本，配置数据
   private volatile AtomicReference<ApolloConfig> m_configCache;
+  // 命名空间，namespace
   private final String m_namespace;
     // 定时执行抓取远程配置的线程池
   private final static ScheduledExecutorService m_executorService;
@@ -67,6 +73,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     // 访问获取远程配置的接口调用进行限流
   private final RateLimiter m_loadConfigRateLimiter;
   private final AtomicBoolean m_configNeedForceRefresh;
+  // 请求失败的调度策略
   private final SchedulePolicy m_loadConfigFailSchedulePolicy;
   private final Gson gson;
 
@@ -94,6 +101,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     // 限流
     m_loadConfigRateLimiter = RateLimiter.create(m_configUtil.getLoadConfigQPS());
     m_configNeedForceRefresh = new AtomicBoolean(true);
+    // 基于指数退避的重试调度策略，初始时间是1s，最大时间是8s
     m_loadConfigFailSchedulePolicy = new ExponentialSchedulePolicy(m_configUtil.getOnErrorRetryInterval(),
         m_configUtil.getOnErrorRetryInterval() * 8);
     gson = new Gson();
