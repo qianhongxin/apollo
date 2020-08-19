@@ -83,6 +83,7 @@ public class ConfigServiceWithCache extends AbstractConfigService {
             try {
               ReleaseMessage latestReleaseMessage = releaseMessageService.findLatestReleaseMessageForMessages(Lists
                   .newArrayList(key));
+              // 查找最新的配置
               Release latestRelease = releaseService.findLatestActiveRelease(namespaceInfo.get(0), namespaceInfo.get(1),
                   namespaceInfo.get(2));
 
@@ -141,13 +142,21 @@ public class ConfigServiceWithCache extends AbstractConfigService {
 
     Tracer.logEvent(TRACER_EVENT_CACHE_GET, key);
 
+    // 从缓存中获取key对应的ReleaseMessaage的id，如果缓存没有，会触发加载逻辑即72行处
     ConfigCacheEntry cacheEntry = configCache.getUnchecked(key);
 
     //cache is out-dated
+      // clientMessages包括的是Release
+      // 条件一：客户端发送过来的由NotificationControllerV2接口通知变更的数据即ApolloNotificationMessages 不是 null
+      // 条件二：检验客户端发送过来的ApolloNotificationMessages是否包含key
+      // 条件三：客户端发送过来的ApolloNotificationMessages的value即ReleaseMessage的主键  要大于  缓存中cacheEntry的缓存的ReleaseMessage的Id(cacheEntry.getNotificationId()的值)
+
+      // 则过期缓存中低版本的配置，从新加载
     if (clientMessages != null && clientMessages.has(key) &&
         clientMessages.get(key) > cacheEntry.getNotificationId()) {
       //invalidate the cache and try to load from db again
       invalidate(key);
+      // reload
       cacheEntry = configCache.getUnchecked(key);
     }
 

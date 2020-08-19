@@ -48,12 +48,15 @@ public class AppNamespaceServiceWithCache implements InitializingBean {
   private long maxIdScanned;
 
   //store namespaceName -> AppNamespace
+  // 缓存公共AppNamespace 即 appId + namespaceName。抗并发
   private CaseInsensitiveMapWrapper<AppNamespace> publicAppNamespaceCache;
 
   //store appId+namespaceName -> AppNamespace
+    // 缓存所有AppNamespace 即 appId + namespaceName。抗并发
   private CaseInsensitiveMapWrapper<AppNamespace> appNamespaceCache;
 
   //store id -> AppNamespace
+    // 缓存所有的 AppNamespace的id 到 AppNamespace 的映射
   private Map<Long, AppNamespace> appNamespaceIdCache;
 
   public AppNamespaceServiceWithCache(

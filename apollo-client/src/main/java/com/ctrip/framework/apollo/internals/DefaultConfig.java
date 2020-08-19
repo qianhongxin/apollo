@@ -34,7 +34,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
   // 存放从META-INF/config/%s.properties下加载的配置
   private final Properties m_resourceProperties;
   private final AtomicReference<Properties> m_configProperties;
-  // 一般是LocalFileConfigRepository
+  // LocalFileConfigRepository，如果idc=local，则关联的upstream是null，否则就是RemoteConfigRepository
   private final ConfigRepository m_configRepository;
   private final RateLimiter m_warnLogRateLimiter;
 
@@ -50,6 +50,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     m_namespace = namespace;
     // 从META-INF/config/m_namespace.properties下加载配置
     m_resourceProperties = loadFromResource(m_namespace);
+    // 从配置仓库加载配置，配置仓库是在DefaultConfigFactory的45行创建的
     m_configRepository = configRepository;
     m_configProperties = new AtomicReference<>();
     m_warnLogRateLimiter = RateLimiter.create(0.017); // 1 warning log output per minute
@@ -58,6 +59,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
 
   private void initialize() {
     try {
+        // m_configRepository.getConfig()，从配置仓库获取配置数据。这个配置仓库是在DefaultConfigFactory的45行创建的
       updateConfig(m_configRepository.getConfig(), m_configRepository.getSourceType());
     } catch (Throwable ex) {
       Tracer.logError(ex);
@@ -79,7 +81,8 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
     String value = System.getProperty(key);
 
     // step 2: check local cached properties file
-      // 从本地缓存m_configProperties获取配置
+      // 从本地缓存m_configProperties获取配置（即如果idc是非local的，则配置仓库是和远程配置中心
+                                             // 关联的，这里的就是近实时的配置。否则idc是local的，就从本地缓存的配置文件META-INF/config/%s.properties中加载配置）
     if (value == null && m_configProperties.get() != null) {
       value = m_configProperties.get().getProperty(key);
     }
@@ -153,7 +156,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       return;
     }
 
-    // 调用ApolloConfigChangeListener实现配置变更通知
+    // 调用ApolloConfigChangeListener实现配置变更通知，通知用户自定义的监听器
     this.fireConfigChange(new ConfigChangeEvent(m_namespace, actualChanges));
 
     Tracer.logEvent("Apollo.Client.ConfigChanges", m_namespace);

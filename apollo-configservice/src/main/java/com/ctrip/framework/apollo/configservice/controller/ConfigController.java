@@ -40,6 +40,7 @@ public class ConfigController {
   private static final Splitter X_FORWARDED_FOR_SPLITTER = Splitter.on(",").omitEmptyStrings()
       .trimResults();
   // 启动时根据配置看注入的是ConfigServiceWithCache还是DefaultConfigService
+    // ConfigServiceAutoConfiguration中的40行做的注入选择。如果用缓存就是ConfigServiceWithCache否则就是从数据库硬刚DefaultConfigService
   private final ConfigService configService;
   private final AppNamespaceServiceWithCache appNamespaceService;
   private final NamespaceUtil namespaceUtil;

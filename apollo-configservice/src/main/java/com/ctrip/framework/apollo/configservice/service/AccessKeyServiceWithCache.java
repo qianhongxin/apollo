@@ -47,7 +47,9 @@ public class AccessKeyServiceWithCache implements InitializingBean {
   private ScheduledExecutorService scheduledExecutorService;
   private Date lastTimeScanned;
 
+  // 缓存AccessKey
   private ListMultimap<String, AccessKey> accessKeyCache;
+  // 缓存AccessKey的Id
   private ConcurrentMap<Long, AccessKey> accessKeyIdCache;
 
   @Autowired

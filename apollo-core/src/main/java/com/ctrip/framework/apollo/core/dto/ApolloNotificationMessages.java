@@ -9,6 +9,8 @@ import java.util.Map;
  * @author Jason Song(song_s@ctrip.com)
  */
 public class ApolloNotificationMessages {
+    // key是ReleaseMessageKeyGenerator.generate(appId, clusterName, namespaceName)生成的
+    // value是ReleaseMessage的主键
   private Map<String, Long> details;
 
   public ApolloNotificationMessages() {
