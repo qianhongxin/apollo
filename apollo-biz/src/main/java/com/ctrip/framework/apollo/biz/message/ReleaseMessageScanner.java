@@ -95,12 +95,13 @@ public class ReleaseMessageScanner implements InitializingBean {
     //current batch is 500
     // 查询大于maxIdScanned升序前500条。包括maxIdScanned
     // 每次批量处理500条数据，从上次记录的maxIdScanned开始。maxIdScanned在系统启动时初始化好即46行
+      // 重复的老的ReleaseMessage会被DatabaseMessageSender清空
     List<ReleaseMessage> releaseMessages =
         releaseMessageRepository.findFirst500ByIdGreaterThanOrderByIdAsc(maxIdScanned);
     if (CollectionUtils.isEmpty(releaseMessages)) {
       return false;
     }
-    // 通知客户端
+    // 有变更的配置版本id通知客户端
     fireMessageScanned(releaseMessages);
     int messageScanned = releaseMessages.size();
     // 将查询到的最后一条消息的id赋值给给maxIdScanned

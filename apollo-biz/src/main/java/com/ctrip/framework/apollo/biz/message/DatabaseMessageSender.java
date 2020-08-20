@@ -114,7 +114,7 @@ public class DatabaseMessageSender implements MessageSender {
       List<ReleaseMessage> messages = releaseMessageRepository.findFirst100ByMessageAndIdLessThanOrderByIdAsc(
           releaseMessage.getMessage(), releaseMessage.getId());
 
-      // 删除这些多余的重复消息。同一个appId+clusterName+namespace，保留一条最新的消息即可
+      // 删除数据库中这些多余的重复消息。同一个appId+clusterName+namespace，保留一条最新的消息即可
       releaseMessageRepository.deleteAll(messages);
       hasMore = messages.size() == 100;
 
