@@ -57,6 +57,7 @@ public class MetaDomainConsts {
    * Return one meta server address. If multiple meta server addresses are configured, will select one.
    */
   public static String getDomain(Env env) {
+      // 根据env，从metaserver获取对应环境的configserivice域名，后续通过nginx负载均衡
     String metaServerAddress = getMetaServerAddress(env);
     // if there is more than one address, need to select one
     if (metaServerAddress.contains(",")) {

@@ -17,6 +17,7 @@ import com.google.common.collect.Lists;
  */
 public abstract class AbstractConfigRepository implements ConfigRepository {
   private static final Logger logger = LoggerFactory.getLogger(AbstractConfigRepository.class);
+  // 基于CopyOnWrite，写时复制技术。最终一致性。写的时候不阻塞读
   private List<RepositoryChangeListener> m_listeners = Lists.newCopyOnWriteArrayList();
   protected PropertiesFactory propertiesFactory = ApolloInjector.getInstance(PropertiesFactory.class);
 

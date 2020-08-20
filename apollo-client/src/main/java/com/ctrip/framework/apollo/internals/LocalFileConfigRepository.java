@@ -29,7 +29,7 @@ import com.google.common.base.Preconditions;
 /**
  * @author Jason Song(song_s@ctrip.com)
  */
-// 基于本地文件的Repository
+// 装饰模式使用，对RemoteConfigRepository做了封装，如果用户不设置m_upstream，就从本地文件取。实现了高可用，降级
 public class LocalFileConfigRepository extends AbstractConfigRepository
     implements RepositoryChangeListener {
   private static final Logger logger = LoggerFactory.getLogger(LocalFileConfigRepository.class);
@@ -78,7 +78,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   // 查找本地缓存配置的文件
   private File findLocalCacheDir() {
     try {
-        // 本地配置文件路径
+        // 本地配置文件路径，linux上是/opt/data/xxx
       String defaultCacheDir = m_configUtil.getDefaultLocalCacheDir();
       Path path = Paths.get(defaultCacheDir);
       if (!Files.exists(path)) {
@@ -113,12 +113,14 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     }
     //clear previous listener
     if (m_upstream != null) {
+        // 从老的m_upstream的监听器列表中移除掉自己。因为119行要更新m_upstream了。也便于gc
       m_upstream.removeChangeListener(this);
     }
+    // 更新m_upstream
     m_upstream = upstreamConfigRepository;
     // 从m_upstream指向的Repository即RemoteRepository从远程拉取配置，并合并到LocalFileConfigRepository维护的本地文件中缓存
     trySyncFromUpstream();
-    // 监听配置变更，有变化的话119行会被调用，
+    // 监听配置变更，将当前对象LocalFileConfigRepository加入upstreamConfigRepository（即RemoteConfigRepository）的listeners中，当有配置变更时回掉他的onRepositoryChange方法
     upstreamConfigRepository.addChangeListener(this);
   }
 
@@ -130,7 +132,9 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   // 配置变更回调，更新本地文件配置
   @Override
   public void onRepositoryChange(String namespace, Properties newProperties) {
+      // Properties重写了equals方法。会比较每个key是否完全一样。不是比较内存地址
     if (newProperties.equals(m_fileProperties)) {
+        // 如果此次变更的配置和m_fileProperties相同，就不用通知变更了
       return;
     }
     Properties newFileProperties = propertiesFactory.getPropertiesInstance();

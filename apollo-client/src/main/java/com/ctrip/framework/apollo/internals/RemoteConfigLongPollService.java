@@ -205,7 +205,9 @@ public class RemoteConfigLongPollService {
 
         logger.debug("Long polling response: {}, url: {}", response.getStatusCode(), url);
         if (response.getStatusCode() == 200 && response.getBody() != null) {
+            // 更新通知保存到m_notifications中
           updateNotifications(response.getBody());
+          // 将变更通知保存到m_remoteNotificationMessages
           updateRemoteNotifications(response.getBody());
           transaction.addData("Result", response.getBody().toString());
           notify(lastServiceDto, response.getBody());

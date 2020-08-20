@@ -69,6 +69,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       //register the change listener no matter config repository is working or not
       //so that whenever config repository is recovered, config could get changed
         // 注册监听器，即@ApolloConfigChangeListener修饰的
+        // 监听配置变更，将当前对象DefaultConfig加入m_configRepository（即LocalFileConfigRepository）的listeners中，当有配置变更时回掉他的onRepositoryChange方法
       m_configRepository.addChangeListener(this);
     }
   }

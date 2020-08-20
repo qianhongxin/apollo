@@ -58,7 +58,7 @@ public class DatabaseMessageSender implements MessageSender {
       // 保存配置更新保存到数据库
       // 保存的message是appId+clusterName+namespace
       ReleaseMessage newMessage = releaseMessageRepository.save(new ReleaseMessage(message));
-      // 发布ReleaseMessage的id保存到内存队列
+      // 发布ReleaseMessage的id保存到内存队列。如果队列满了，消费他的ReleaseMessageScanner不工作了，这就会导致admin的配置变更不了，一直卡住了啊
       toClean.offer(newMessage.getId());
 
       // cat调用链监控埋点

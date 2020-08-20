@@ -195,6 +195,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
     if (!m_loadConfigRateLimiter.tryAcquire(5, TimeUnit.SECONDS)) {
       //wait at most 5 seconds
       try {
+          // 等待 5 秒
         TimeUnit.SECONDS.sleep(5);
       } catch (InterruptedException e) {
       }
