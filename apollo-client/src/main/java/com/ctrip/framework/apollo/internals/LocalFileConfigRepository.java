@@ -36,7 +36,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
   private static final String CONFIG_DIR = "/config-cache";
   // 存储namespace值
   private final String m_namespace;
-  // 文件配置的磁盘路径
+  // 文件配置的磁盘文件目录
   private File m_baseDir;
   private final ConfigUtil m_configUtil;
   // 本地文件对应properties
