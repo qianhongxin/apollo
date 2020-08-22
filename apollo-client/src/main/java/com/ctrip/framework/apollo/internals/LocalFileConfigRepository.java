@@ -153,6 +153,7 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     boolean syncFromUpstreamResultSuccess = trySyncFromUpstream();
 
     if (syncFromUpstreamResultSuccess) {
+      // 从远程加载配置成功，这里直接返回
       return;
     }
 
@@ -264,8 +265,9 @@ public class LocalFileConfigRepository extends AbstractConfigRepository
     Transaction transaction = Tracer.newTransaction("Apollo.ConfigService", "persistLocalConfigFile");
     transaction.addData("LocalConfigFile", file.getAbsolutePath());
     try {
-        // 覆盖磁盘的旧文件
+
       out = new FileOutputStream(file);
+      // 覆盖磁盘的旧文件，并将配置更新到m_fileProperties。m_fileProperties内部通过synchronized保证读写并发安全
       m_fileProperties.store(out, "Persisted by DefaultConfig");
       transaction.setStatus(Transaction.SUCCESS);
     } catch (IOException ex) {

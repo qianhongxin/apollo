@@ -236,6 +236,7 @@ public class DefaultConfig extends AbstractConfig implements RepositoryChangeLis
       properties = propertiesFactory.getPropertiesInstance();
 
       try {
+        // 底层通过synchronized保证并发安全
         properties.load(in);
       } catch (IOException ex) {
         Tracer.logError(ex);

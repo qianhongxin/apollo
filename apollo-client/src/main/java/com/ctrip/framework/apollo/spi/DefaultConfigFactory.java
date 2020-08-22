@@ -67,6 +67,7 @@ public class DefaultConfigFactory implements ConfigFactory {
   }
 
   LocalFileConfigRepository createLocalConfigRepository(String namespace) {
+    // 如果本地env.properties 中开启的是local环境，直接用本地磁盘文件配置即可，不关联远程配置
     if (m_configUtil.isInLocalMode()) {
       logger.warn(
           "==== Apollo is in local mode! Won't pull configs from remote server for namespace {} ! ====",
