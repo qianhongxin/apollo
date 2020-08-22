@@ -32,11 +32,13 @@ public class DefaultConfigManager implements ConfigManager {
       // 获取namespace对应的Config对象
     Config config = m_configs.get(namespace);
 
+    // 避免无意义的加锁，因为config不是null，就不用走枷锁创建逻辑
     if (config == null) {
         // 给DefaultConfigManager单例对象加锁
       synchronized (this) {
         config = m_configs.get(namespace);
 
+        // 避免重复创建的判断，因为到这里可能会有多个线程针对同一个namespace创建config
         if (config == null) {
           ConfigFactory factory = m_factoryManager.getFactory(namespace);
 
