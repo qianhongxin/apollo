@@ -225,7 +225,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
 
           transaction.addData("StatusCode", response.getStatusCode());
           transaction.setStatus(Transaction.SUCCESS);
-
+          // 如果没有配置变更，直接返回本地的
           if (response.getStatusCode() == 304) {
             logger.debug("Config server responds with 304 HTTP status code.");
             return m_configCache.get();
@@ -316,6 +316,7 @@ public class RemoteConfigRepository extends AbstractConfigRepository {
 
   public void onLongPollNotified(ServiceDTO longPollNotifiedServiceDto, ApolloNotificationMessages remoteMessages) {
     m_longPollServiceDto.set(longPollNotifiedServiceDto);
+    // 将远程增量后的新配置设置到remoteMessages
     m_remoteMessages.set(remoteMessages);
     m_executorService.submit(new Runnable() {
       @Override
